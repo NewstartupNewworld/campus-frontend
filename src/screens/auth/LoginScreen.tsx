@@ -38,7 +38,7 @@ export const LoginScreen = () => {
       // const { token } = response.data;
       // await SecureStore.setItemAsync('token', token);
 
-      const response = await fetch('https://campus-backend-production-513a.up.railway.app/api/auth/login', {
+      const response = await fetch('https://campus-backend-production-2dbb.up.railway.app/api/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ email, password }),
