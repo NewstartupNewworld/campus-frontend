@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../theme/colors';
 
 type AuthStackParamList = {
@@ -84,9 +85,11 @@ export const SignupScreen = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Signup failed');
 
-      Alert.alert('🎉 Account Created!', 'You can now sign in.', [
-        { text: 'Go to Login', onPress: () => navigation.navigate('Login') }
-      ]);
+      // Save token and navigate directly to app
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+      navigation.navigate('Main' as never);
     } catch (err: any) {
       Alert.alert('Signup failed', err.message || 'Something went wrong. Try again.');
     } finally {

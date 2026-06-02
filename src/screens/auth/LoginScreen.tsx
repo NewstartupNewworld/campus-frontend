@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../theme/colors';
 
 type AuthStackParamList = {
@@ -33,21 +34,21 @@ export const LoginScreen = () => {
 
     setLoading(true);
     try {
-      // Replace with real API call:
-      // const response = await api.post('/auth/login', { email, password });
-      // const { token } = response.data;
-      // await SecureStore.setItemAsync('token', token);
-
       const response = await fetch('https://campus-backend-production-2dbb.up.railway.app/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email, password }),
-});
-const data = await response.json();
-if (!response.ok) throw new Error(data.error || 'Login failed');
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Login failed');
+
+      // Save token and user data
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
       navigation.navigate('Main' as never);
-    } catch (err) {
-      Alert.alert('Login failed', 'Invalid email or password. Try again.');
+    } catch (err: any) {
+      Alert.alert('Login failed', err.message || 'Invalid email or password. Try again.');
     } finally {
       setLoading(false);
     }
