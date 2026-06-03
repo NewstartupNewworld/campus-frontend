@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { io, Socket } from 'socket.io-client';
 import { Colors } from '../../theme/colors';
+import { RatingModal } from '../../components/RatingModal';
 
 const SOCKET_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
@@ -29,6 +30,7 @@ interface ChatMeta {
   listingImage: string;
   sellerName?: string;
   sellerCollege?: string;
+  sellerId?: string;
 }
 
 type RootStackParamList = {
@@ -114,6 +116,7 @@ export const ChatRoomScreen = () => {
   const [loading, setLoading] = useState(true);
   const [typing, setTyping] = useState(false);
   const [userId, setUserId] = useState('');
+  const [showRating, setShowRating] = useState(false);
   const [chatMeta, setChatMeta] = useState<ChatMeta>({
     id: chatId,
     status: 'pending',
@@ -128,7 +131,6 @@ export const ChatRoomScreen = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        // Get current user
         const userStr = await AsyncStorage.getItem('user');
         const token = await AsyncStorage.getItem('token');
         if (userStr) {
@@ -164,6 +166,7 @@ export const ChatRoomScreen = () => {
             status: 'accepted',
             sellerName: data.sellerName,
             sellerCollege: data.sellerCollege,
+            sellerId: data.sellerId,
           }));
           setMessages(prev => [...prev, {
             id: Date.now().toString(),
@@ -182,6 +185,22 @@ export const ChatRoomScreen = () => {
         if (response.ok) {
           const data = await response.json();
           setMessages(data.messages || []);
+        }
+
+        // Load chat meta
+        const chatResponse = await fetch(
+          `${SOCKET_URL}/api/chats/${chatId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (chatResponse.ok) {
+          const data = await chatResponse.json();
+          setChatMeta(prev => ({
+            ...prev,
+            status: data.chat.status,
+            sellerId: data.chat.seller_id,
+            sellerName: data.sellerInfo?.anonymous_handle,
+            sellerCollege: data.sellerInfo?.college,
+          }));
         }
       } catch (err) {
         console.error('Chat init error:', err);
@@ -205,7 +224,6 @@ export const ChatRoomScreen = () => {
   const handleSend = async () => {
     const text = input.trim();
     if (!text || chatMeta.status === 'pending') return;
-
     setInput('');
     socketRef.current?.emit('send_message', {
       chatId,
@@ -238,6 +256,7 @@ export const ChatRoomScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backText}>←</Text>
@@ -255,11 +274,23 @@ export const ChatRoomScreen = () => {
         </View>
       </View>
 
+      {/* Status banner */}
       {chatMeta.status === 'pending'
         ? <PendingBanner listingTitle={listingTitle} />
-        : <AcceptedBanner meta={chatMeta} />
+        : (
+          <>
+            <AcceptedBanner meta={chatMeta} />
+            <TouchableOpacity
+              style={styles.rateBtn}
+              onPress={() => setShowRating(true)}
+            >
+              <Text style={styles.rateBtnText}>⭐ Rate this seller</Text>
+            </TouchableOpacity>
+          </>
+        )
       }
 
+      {/* Messages */}
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={Colors.accent} />
@@ -277,6 +308,7 @@ export const ChatRoomScreen = () => {
         />
       )}
 
+      {/* Input */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.inputRow}>
           {isPending ? (
@@ -307,6 +339,16 @@ export const ChatRoomScreen = () => {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Rating Modal */}
+      <RatingModal
+        visible={showRating}
+        onClose={() => setShowRating(false)}
+        toUserId={chatMeta.sellerId || ''}
+        listingId={chatId}
+        listingTitle={listingTitle}
+        sellerHandle={chatMeta.sellerName || 'Seller'}
+      />
     </SafeAreaView>
   );
 };
@@ -341,6 +383,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     alignItems: 'center', justifyContent: 'center',
   },
+  rateBtn: {
+    marginHorizontal: 12, marginBottom: 8,
+    backgroundColor: Colors.warn + '15',
+    borderRadius: 12, borderWidth: 1,
+    borderColor: Colors.warn + '44',
+    paddingVertical: 10, alignItems: 'center',
+  },
+  rateBtnText: { color: Colors.warn, fontWeight: '700', fontSize: 13 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   messageList: { paddingHorizontal: 14, paddingVertical: 10, paddingBottom: 20 },
   dateSeparator: { alignItems: 'center', marginVertical: 12 },
