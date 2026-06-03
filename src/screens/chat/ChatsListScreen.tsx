@@ -5,7 +5,10 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../theme/colors';
+
+const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
 interface ChatPreview {
   id: string;
@@ -14,7 +17,7 @@ interface ChatPreview {
   lastMessageTime: string;
   status: 'pending' | 'accepted' | 'rejected';
   unreadCount: number;
-  role: 'buyer' | 'seller';   // current user's role in this chat
+  role: 'buyer' | 'seller';
 }
 
 type RootStackParamList = {
@@ -33,38 +36,38 @@ export const ChatsListScreen = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      // Replace with: const data = await api.get('/chats');
-      await new Promise(r => setTimeout(r, 600));
-      setChats([
-        {
-          id: '1', listingTitle: 'Engineering Mathematics Vol 3',
-          lastMessage: 'Waiting for seller to accept...', lastMessageTime: '2h ago',
-          status: 'pending', unreadCount: 0, role: 'buyer',
-        },
-        {
-          id: '2', listingTitle: 'Dell XPS 13 Charger',
-          lastMessage: 'Is the charger still available?', lastMessageTime: '10m ago',
-          status: 'accepted', unreadCount: 2, role: 'seller',
-        },
-      ]);
-      setLoading(false);
-    };
-    load();
+    loadChats();
   }, []);
+
+  const loadChats = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/chats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setChats(data.chats || []);
+      }
+    } catch (err) {
+      console.error('Error loading chats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderItem = ({ item }: { item: ChatPreview }) => (
     <TouchableOpacity
       style={styles.chatRow}
-      onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, listingTitle: item.listingTitle })}
+      onPress={() => navigation.navigate('ChatRoom', {
+        chatId: item.id,
+        listingTitle: item.listingTitle,
+      })}
       activeOpacity={0.8}
     >
-      {/* Avatar */}
       <View style={styles.avatar}>
         <Text style={{ fontSize: 20 }}>{item.role === 'buyer' ? '🛍️' : '🏷️'}</Text>
       </View>
-
-      {/* Content */}
       <View style={styles.chatContent}>
         <View style={styles.chatTop}>
           <Text style={styles.chatTitle} numberOfLines={1}>{item.listingTitle}</Text>
@@ -104,8 +107,12 @@ export const ChatsListScreen = () => {
           keyExtractor={i => i.id}
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
+          onRefresh={loadChats}
+          refreshing={loading}
           ListEmptyComponent={
-            <Text style={styles.empty}>No chats yet. Express interest in a listing to start!</Text>
+            <Text style={styles.empty}>
+              No chats yet. Express interest in a listing to start!
+            </Text>
           }
         />
       )}
@@ -143,5 +150,8 @@ const styles = StyleSheet.create({
   },
   unreadText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   separator: { height: 1, backgroundColor: Colors.border, marginLeft: 76 },
-  empty: { textAlign: 'center', color: Colors.textMuted, marginTop: 60, paddingHorizontal: 32, lineHeight: 22 },
+  empty: {
+    textAlign: 'center', color: Colors.textMuted,
+    marginTop: 60, paddingHorizontal: 32, lineHeight: 22,
+  },
 });

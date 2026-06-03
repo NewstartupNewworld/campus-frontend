@@ -3,18 +3,20 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   SafeAreaView, ActivityIndicator, Switch, Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../theme/colors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface UserProfile {
   id: string;
-  anonymousHandle: string;      // e.g. CampusOwl#42
+  anonymousHandle: string;
   college: string;
   department: string;
   year: number;
   verified: boolean;
-  trustScore: number;           // 0–100
+  trustScore: number;
   joinedAt: string;
   stats: {
     listingsPosted: number;
@@ -49,7 +51,7 @@ interface ListingPreview {
 interface Rating {
   id: string;
   fromHandle: string;
-  score: number;           // 1–5
+  score: number;
   comment: string;
   listingTitle: string;
   createdAt: string;
@@ -88,8 +90,8 @@ const MOCK_PROFILE: UserProfile = {
     { id: 'l3', title: 'Python Crash Course', price: 180, status: 'active', image: '' },
   ],
   recentRatings: [
-    { id: 'r1', fromHandle: 'NightOwl#77', score: 5, comment: 'Super smooth transaction, item exactly as described!', listingTitle: 'Engineering Maths Vol 3', createdAt: new Date(Date.now() - 86400000).toISOString() },
-    { id: 'r2', fromHandle: 'GhostCoder#99', score: 4, comment: 'Good seller, slight delay in response but all good.', listingTitle: 'Python Crash Course', createdAt: new Date(Date.now() - 432000000).toISOString() },
+    { id: 'r1', fromHandle: 'NightOwl#77', score: 5, comment: 'Super smooth transaction!', listingTitle: 'Engineering Maths Vol 3', createdAt: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'r2', fromHandle: 'GhostCoder#99', score: 4, comment: 'Good seller, slight delay but all good.', listingTitle: 'Python Crash Course', createdAt: new Date(Date.now() - 432000000).toISOString() },
   ],
 };
 
@@ -118,12 +120,8 @@ const stars = (score: number) =>
 
 const TrustRing = ({ score }: { score: number }) => {
   const { label, color } = trustLabel(score);
-  const circumference = 2 * Math.PI * 42;
-  const filled = (score / 100) * circumference;
-
   return (
     <View style={tr.wrap}>
-      {/* SVG-like ring using border trick */}
       <View style={[tr.outerRing, { borderColor: color + '33' }]}>
         <View style={[tr.innerRing, { borderColor: color }]}>
           <Text style={[tr.score, { color }]}>{score}</Text>
@@ -277,15 +275,18 @@ const SettingsSection = () => {
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const [anonymousMode, setAnonymousMode] = useState(true);
+  const navigation = useNavigation();
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => {
-        // Clear token and navigate to Login
-        // SecureStore.deleteItemAsync('token');
-        // navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-      }},
+      {
+        text: 'Log Out', style: 'destructive', onPress: async () => {
+          await AsyncStorage.removeItem('token');
+          await AsyncStorage.removeItem('user');
+          navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+        }
+      },
     ]);
   };
 
@@ -348,10 +349,26 @@ export const ProfileScreen = () => {
 
   useEffect(() => {
     const load = async () => {
-      // Replace with: const data = await api.get('/users/me');
-      await new Promise(r => setTimeout(r, 600));
-      setProfile(MOCK_PROFILE);
-      setLoading(false);
+      try {
+        const userStr = await AsyncStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          setProfile({
+            ...MOCK_PROFILE,
+            id: user.id,
+            anonymousHandle: user.anonymous_handle || MOCK_PROFILE.anonymousHandle,
+            college: user.college || MOCK_PROFILE.college,
+            department: user.department || MOCK_PROFILE.department,
+            verified: user.verified || false,
+          });
+        } else {
+          setProfile(MOCK_PROFILE);
+        }
+      } catch (e) {
+        setProfile(MOCK_PROFILE);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, []);
@@ -367,7 +384,6 @@ export const ProfileScreen = () => {
   if (!profile) return null;
 
   const { stats, badges, recentListings, recentRatings } = profile;
-  const { label: trustLabel_, color: trustColor } = trustLabel(profile.trustScore);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -463,7 +479,6 @@ export const ProfileScreen = () => {
               )}
             </>
           )}
-
           {activeTab === 'ratings' && (
             <>
               {recentRatings.map(r => <RatingCard key={r.id} rating={r} />)}
@@ -472,7 +487,6 @@ export const ProfileScreen = () => {
               )}
             </>
           )}
-
           {activeTab === 'badges' && (
             <View style={styles.badgesGrid}>
               {badges.map(b => <BadgeCard key={b.id} badge={b} />)}
@@ -493,14 +507,12 @@ export const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   scroll: { paddingBottom: 40 },
-
   profileHeader: {
     flexDirection: 'row', gap: 14, padding: 16,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   avatar: {
     width: 68, height: 68, borderRadius: 34,
-    background: Colors.accent,
     backgroundColor: Colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -517,7 +529,6 @@ const styles = StyleSheet.create({
   college: { fontSize: 13, color: Colors.accent, fontWeight: '700' },
   dept: { fontSize: 12, color: Colors.textMuted },
   joined: { fontSize: 11, color: Colors.textDim },
-
   trustCard: {
     flexDirection: 'row', gap: 16, alignItems: 'center',
     margin: 16, padding: 16, backgroundColor: Colors.card,
@@ -531,12 +542,10 @@ const styles = StyleSheet.create({
   trustItemDot: { fontSize: 12, fontWeight: '800', width: 14 },
   trustItemLabel: { fontSize: 11, color: Colors.textMuted, flex: 1 },
   trustItemVal: { fontSize: 11, fontWeight: '700', color: Colors.text },
-
   statsRow: {
     flexDirection: 'row', gap: 8,
     paddingHorizontal: 16, marginBottom: 12,
   },
-
   ratingBar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     marginHorizontal: 16, marginBottom: 16,
@@ -546,7 +555,6 @@ const styles = StyleSheet.create({
   ratingBarLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
   ratingBarStars: { fontSize: 14, color: Colors.warn },
   ratingBarVal: { fontSize: 12, color: Colors.text, fontWeight: '700' },
-
   tabs: {
     flexDirection: 'row', marginHorizontal: 16, marginBottom: 14,
     backgroundColor: Colors.card, borderRadius: 12,
@@ -556,7 +564,6 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: Colors.accent },
   tabText: { fontSize: 13, fontWeight: '700', color: Colors.textMuted },
   tabTextActive: { color: '#fff' },
-
   tabContent: { paddingHorizontal: 16, marginBottom: 20 },
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
   empty: { textAlign: 'center', color: Colors.textMuted, paddingVertical: 30, fontSize: 13 },
