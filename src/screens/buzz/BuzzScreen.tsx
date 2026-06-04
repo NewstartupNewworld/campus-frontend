@@ -507,10 +507,15 @@ export const BuzzScreen = () => {
       text,
       createdAt: new Date().toISOString(),
     };
-    setPosts(prev => prev.map(p =>
-      p.id === postId ? { ...p, comments: [...p.comments, newComment] } : p
-    ));
-    // api.post(`/buzz/${postId}/comments`, { text });
+    setPosts(prev => {
+      const updated = prev.map(p =>
+        p.id === postId ? { ...p, comments: [...p.comments, newComment] } : p
+      );
+      // Update commentPost to keep it in sync
+      const updatedPost = updated.find(p => p.id === postId);
+      if (updatedPost) setCommentPost(updatedPost);
+      return updated;
+    });
   };
 
   const handleCreatePost = (content: string, category: PostCategory) => {
