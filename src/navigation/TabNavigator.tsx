@@ -42,11 +42,12 @@ export function TabNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.card,
-          borderTopColor: Colors.border,
-          borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
+        backgroundColor: Colors.card,
+        borderTopColor: Colors.border,
+        borderTopWidth: 1,
+        height: 80,
+        paddingBottom: 20,
+        paddingTop: 6,
         },
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textDim,
