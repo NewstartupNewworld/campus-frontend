@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Linking, Alert, Animated, Vibration, Platform,
+  TextInput, Modal,
 } from 'react-native';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../theme/colors';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AlertSeverity = 'critical' | 'warning' | 'info';
 
@@ -15,7 +15,7 @@ interface SOSAlert {
   type: string;
   message: string;
   location: string;
-  reportedBy: string;       // anonymous
+  reportedBy: string;
   severity: AlertSeverity;
   createdAt: string;
   resolved: boolean;
@@ -29,9 +29,7 @@ interface QuickContact {
   color: string;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const QUICK_CONTACTS: QuickContact[] = [
+const DEFAULT_CONTACTS: QuickContact[] = [
   { label: 'Campus Security', number: '1800-XXX-0001', icon: '🛡️', color: Colors.accent },
   { label: 'Ambulance',       number: '108',           icon: '🚑', color: Colors.danger },
   { label: 'Police',          number: '100',           icon: '👮', color: '#4F8CFF' },
@@ -83,8 +81,6 @@ const timeAgo = (iso: string) => {
   return `${Math.floor(m / 60)}h ago`;
 };
 
-// ─── Pulsing SOS Button ───────────────────────────────────────────────────────
-
 const PulsingSOSButton = ({ onPress, active }: { onPress: () => void; active: boolean }) => {
   const pulse1 = useRef(new Animated.Value(1)).current;
   const pulse2 = useRef(new Animated.Value(1)).current;
@@ -134,43 +130,20 @@ const PulsingSOSButton = ({ onPress, active }: { onPress: () => void; active: bo
 
 const btn = StyleSheet.create({
   wrap: { alignItems: 'center', justifyContent: 'center', height: 220, marginVertical: 8 },
-  ring: {
-    position: 'absolute',
-    width: 160, height: 160, borderRadius: 80,
-    backgroundColor: Colors.danger,
-  },
-  button: {
-    width: 160, height: 160, borderRadius: 80,
-    backgroundColor: Colors.card,
-    borderWidth: 3, borderColor: Colors.danger,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.danger, shadowOpacity: 0.5,
-    shadowRadius: 20, elevation: 12,
-  },
+  ring: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.danger },
+  button: { width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.card, borderWidth: 3, borderColor: Colors.danger, alignItems: 'center', justifyContent: 'center', shadowColor: Colors.danger, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
   buttonActive: { backgroundColor: Colors.danger },
   icon: { fontSize: 36, marginBottom: 4 },
   label: { fontSize: 20, fontWeight: '900', color: Colors.text, letterSpacing: 2 },
   sublabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 3 },
 });
 
-// ─── Alert Type Picker ────────────────────────────────────────────────────────
-
-const AlertTypePicker = ({
-  selected,
-  onSelect,
-}: {
-  selected: string;
-  onSelect: (t: string) => void;
-}) => (
+const AlertTypePicker = ({ selected, onSelect }: { selected: string; onSelect: (t: string) => void }) => (
   <View style={atp.wrap}>
     <Text style={atp.label}>Alert Type</Text>
     <View style={atp.grid}>
       {ALERT_TYPES.map(t => (
-        <TouchableOpacity
-          key={t}
-          style={[atp.pill, selected === t && atp.pillActive]}
-          onPress={() => onSelect(t)}
-        >
+        <TouchableOpacity key={t} style={[atp.pill, selected === t && atp.pillActive]} onPress={() => onSelect(t)}>
           <Text style={[atp.pillText, selected === t && atp.pillTextActive]}>{t}</Text>
         </TouchableOpacity>
       ))}
@@ -182,40 +155,33 @@ const atp = StyleSheet.create({
   wrap: { marginBottom: 14 },
   label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pill: {
-    backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1,
-    borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 6,
-  },
+  pill: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 6 },
   pillActive: { backgroundColor: Colors.danger + '22', borderColor: Colors.danger + '88' },
   pillText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
   pillTextActive: { color: Colors.danger, fontWeight: '700' },
 });
 
-// ─── Quick Contact Card ───────────────────────────────────────────────────────
-
-const ContactCard = ({ contact }: { contact: QuickContact }) => (
+const ContactCard = ({ contact, onLongPress }: { contact: QuickContact; onLongPress: () => void }) => (
   <TouchableOpacity
     style={[cc.card, { borderColor: contact.color + '44' }]}
     onPress={() => Linking.openURL(`tel:${contact.number}`)}
+    onLongPress={onLongPress}
     activeOpacity={0.8}
   >
     <Text style={cc.icon}>{contact.icon}</Text>
     <Text style={cc.label}>{contact.label}</Text>
     <Text style={[cc.number, { color: contact.color }]}>{contact.number}</Text>
+    <Text style={cc.editHint}>Hold to edit</Text>
   </TouchableOpacity>
 );
 
 const cc = StyleSheet.create({
-  card: {
-    width: '47%', backgroundColor: Colors.card, borderRadius: 14,
-    borderWidth: 1, padding: 14, alignItems: 'center', gap: 4,
-  },
+  card: { width: '47%', backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, padding: 14, alignItems: 'center', gap: 4 },
   icon: { fontSize: 26 },
   label: { fontSize: 12, fontWeight: '700', color: Colors.text, textAlign: 'center' },
   number: { fontSize: 12, fontWeight: '800' },
+  editHint: { fontSize: 9, color: Colors.textDim, marginTop: 2 },
 });
-
-// ─── Alert Feed Card ──────────────────────────────────────────────────────────
 
 const AlertCard = ({ alert, onRespond }: { alert: SOSAlert; onRespond: (id: string) => void }) => {
   const color = severityColor(alert.severity);
@@ -239,13 +205,8 @@ const AlertCard = ({ alert, onRespond }: { alert: SOSAlert; onRespond: (id: stri
       <View style={ac.footer}>
         <Text style={ac.reporter}>Reported by {alert.reportedBy}</Text>
         {!alert.resolved && (
-          <TouchableOpacity
-            style={[ac.respondBtn, { borderColor: color + '66', backgroundColor: color + '18' }]}
-            onPress={() => onRespond(alert.id)}
-          >
-            <Text style={[ac.respondText, { color }]}>
-              🙋 Responding ({alert.respondersCount})
-            </Text>
+          <TouchableOpacity style={[ac.respondBtn, { borderColor: color + '66', backgroundColor: color + '18' }]} onPress={() => onRespond(alert.id)}>
+            <Text style={[ac.respondText, { color }]}>🙋 Responding ({alert.respondersCount})</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -254,36 +215,22 @@ const AlertCard = ({ alert, onRespond }: { alert: SOSAlert; onRespond: (id: stri
 };
 
 const ac = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1,
-    marginBottom: 10, padding: 14,
-  },
+  card: { backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, marginBottom: 10, padding: 14 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
   headerText: { flex: 1 },
   type: { fontWeight: '800', fontSize: 14 },
   meta: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
-  resolvedBadge: {
-    backgroundColor: Colors.success + '22', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderWidth: 1, borderColor: Colors.success + '44',
-  },
+  resolvedBadge: { backgroundColor: Colors.success + '22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: Colors.success + '44' },
   resolvedText: { fontSize: 10, fontWeight: '700', color: Colors.success },
-  liveBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1,
-  },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
   liveDot: { width: 6, height: 6, borderRadius: 3 },
   liveText: { fontSize: 10, fontWeight: '700' },
   message: { fontSize: 13, color: Colors.text, lineHeight: 20, marginBottom: 10 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   reporter: { fontSize: 11, color: Colors.textDim },
-  respondBtn: {
-    borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5,
-  },
+  respondBtn: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
   respondText: { fontSize: 11, fontWeight: '700' },
 });
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export const SOSScreen = () => {
   const [sosActive, setSosActive] = useState(false);
@@ -292,40 +239,46 @@ export const SOSScreen = () => {
   const [alerts, setAlerts] = useState<SOSAlert[]>(MOCK_ALERTS);
   const [countdown, setCountdown] = useState(5);
   const [countingDown, setCountingDown] = useState(false);
+  const [contacts, setContacts] = useState<QuickContact[]>(DEFAULT_CONTACTS);
+  const [editingContact, setEditingContact] = useState<QuickContact | null>(null);
+  const [editNumber, setEditNumber] = useState('');
+  const [editModal, setEditModal] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Get location on mount
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
       const loc = await Location.getCurrentPositionAsync({});
-      // Reverse geocode for a human-readable label
       const geo = await Location.reverseGeocodeAsync(loc.coords);
       if (geo.length > 0) {
         const g = geo[0];
         setLocation([g.name, g.street, g.district].filter(Boolean).join(', '));
       }
     })();
+
+    // Load saved contacts
+    const loadContacts = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('quickContacts');
+        if (saved) setContacts(JSON.parse(saved));
+      } catch (e) {}
+    };
+    loadContacts();
   }, []);
 
   const handleSOSPress = () => {
     if (sosActive) {
-      // Cancel
       setSosActive(false);
       setCountingDown(false);
       if (countdownRef.current) clearInterval(countdownRef.current);
       setCountdown(5);
       Vibration.cancel();
-      // api.post('/sos/cancel', { ... })
       return;
     }
-
-    // Start 5-second countdown before sending
     setCountingDown(true);
     setCountdown(5);
     Vibration.vibrate([0, 200, 100, 200]);
-
     let remaining = 5;
     countdownRef.current = setInterval(() => {
       remaining -= 1;
@@ -341,8 +294,6 @@ export const SOSScreen = () => {
 
   const sendSOS = async () => {
     Vibration.vibrate([0, 500, 200, 500, 200, 500]);
-
-    // Add to local alerts feed
     const newAlert: SOSAlert = {
       id: Date.now().toString(),
       type: alertType,
@@ -355,14 +306,6 @@ export const SOSScreen = () => {
       respondersCount: 0,
     };
     setAlerts(prev => [newAlert, ...prev]);
-
-    // Replace with real API call:
-    // await api.post('/sos', {
-    //   type: alertType,
-    //   latitude: coords.latitude,
-    //   longitude: coords.longitude,
-    // });
-    // socket.emit('sos_alert', newAlert);
   };
 
   const handleCancelCountdown = () => {
@@ -376,29 +319,39 @@ export const SOSScreen = () => {
     setAlerts(prev => prev.map(a =>
       a.id === id ? { ...a, respondersCount: a.respondersCount + 1 } : a
     ));
-    // api.post(`/sos/${id}/respond`);
+  };
+
+  const handleEditContact = (contact: QuickContact) => {
+    setEditingContact(contact);
+    setEditNumber(contact.number);
+    setEditModal(true);
+  };
+
+  const handleSaveContact = async () => {
+    if (!editingContact) return;
+    const updated = contacts.map(c =>
+      c.label === editingContact.label ? { ...c, number: editNumber } : c
+    );
+    setContacts(updated);
+    await AsyncStorage.setItem('quickContacts', JSON.stringify(updated));
+    setEditModal(false);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🚨 SOS</Text>
           <Text style={styles.headerSub}>Campus Emergency Network</Text>
         </View>
 
-        {/* Location status */}
         <View style={styles.locationBar}>
           <Text style={styles.locationIcon}>📍</Text>
-          <Text style={styles.locationText} numberOfLines={1}>
-            {location ?? 'Getting your location...'}
-          </Text>
+          <Text style={styles.locationText} numberOfLines={1}>{location ?? 'Getting your location...'}</Text>
           <View style={[styles.locationDot, { backgroundColor: location ? Colors.success : Colors.warn }]} />
         </View>
 
-        {/* Countdown overlay */}
         {countingDown && (
           <View style={styles.countdownCard}>
             <Text style={styles.countdownNum}>{countdown}</Text>
@@ -409,20 +362,14 @@ export const SOSScreen = () => {
           </View>
         )}
 
-        {/* SOS Button */}
         {!countingDown && (
           <>
             <PulsingSOSButton onPress={handleSOSPress} active={sosActive} />
-
             {sosActive && (
               <View style={styles.activeAlert}>
-                <Text style={styles.activeAlertText}>
-                  🔴 Your SOS is live — nearby students & security have been notified
-                </Text>
+                <Text style={styles.activeAlertText}>🔴 Your SOS is live — nearby students & security have been notified</Text>
               </View>
             )}
-
-            {/* Alert type picker — only when not active */}
             {!sosActive && (
               <View style={styles.section}>
                 <AlertTypePicker selected={alertType} onSelect={setAlertType} />
@@ -431,15 +378,16 @@ export const SOSScreen = () => {
           </>
         )}
 
-        {/* Quick Contacts */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Contacts</Text>
+          <Text style={styles.editHintGlobal}>💡 Long press any contact to edit the number</Text>
           <View style={styles.contactsGrid}>
-            {QUICK_CONTACTS.map(c => <ContactCard key={c.label} contact={c} />)}
+            {contacts.map(c => (
+              <ContactCard key={c.label} contact={c} onLongPress={() => handleEditContact(c)} />
+            ))}
           </View>
         </View>
 
-        {/* Active Alerts Feed */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Campus Alerts</Text>
@@ -454,59 +402,71 @@ export const SOSScreen = () => {
         </View>
 
       </ScrollView>
+
+      {/* Edit Contact Modal */}
+      <Modal visible={editModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit {editingContact?.label}</Text>
+            <Text style={styles.modalSub}>Enter the correct phone number</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editNumber}
+              onChangeText={setEditNumber}
+              keyboardType="phone-pad"
+              placeholder="Phone number"
+              placeholderTextColor={Colors.textDim}
+              autoFocus
+            />
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setEditModal(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSave} onPress={handleSaveContact}>
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   scroll: { paddingBottom: 30 },
-
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   headerTitle: { fontSize: 22, fontWeight: '900', color: Colors.text },
   headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-
-  locationBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: 16, marginBottom: 8,
-    backgroundColor: Colors.card, borderRadius: 10, borderWidth: 1,
-    borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 9,
-  },
+  locationBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8, backgroundColor: Colors.card, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 9 },
   locationIcon: { fontSize: 14 },
   locationText: { flex: 1, fontSize: 12, color: Colors.textMuted },
   locationDot: { width: 8, height: 8, borderRadius: 4 },
-
-  countdownCard: {
-    marginHorizontal: 16, marginVertical: 20,
-    backgroundColor: Colors.danger + '18', borderRadius: 20,
-    borderWidth: 2, borderColor: Colors.danger + '66',
-    alignItems: 'center', padding: 30,
-  },
+  countdownCard: { marginHorizontal: 16, marginVertical: 20, backgroundColor: Colors.danger + '18', borderRadius: 20, borderWidth: 2, borderColor: Colors.danger + '66', alignItems: 'center', padding: 30 },
   countdownNum: { fontSize: 80, fontWeight: '900', color: Colors.danger, lineHeight: 90 },
   countdownLabel: { fontSize: 16, color: Colors.text, fontWeight: '700', marginBottom: 20 },
-  cancelCountdown: {
-    backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1,
-    borderColor: Colors.border, paddingHorizontal: 24, paddingVertical: 10,
-  },
+  cancelCountdown: { backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 24, paddingVertical: 10 },
   cancelCountdownText: { color: Colors.text, fontWeight: '700', fontSize: 14 },
-
-  activeAlert: {
-    marginHorizontal: 16, marginBottom: 14,
-    backgroundColor: Colors.danger + '18', borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.danger + '44',
-    padding: 12,
-  },
+  activeAlert: { marginHorizontal: 16, marginBottom: 14, backgroundColor: Colors.danger + '18', borderRadius: 12, borderWidth: 1, borderColor: Colors.danger + '44', padding: 12 },
   activeAlertText: { color: Colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
-
   section: { paddingHorizontal: 16, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 12 },
-
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  editHintGlobal: { fontSize: 11, color: Colors.textDim, marginBottom: 12 },
   contactsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
-
   liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   livePulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger },
   liveText: { fontSize: 11, fontWeight: '700', color: Colors.danger },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '80%', borderWidth: 1, borderColor: Colors.border },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  modalSub: { fontSize: 13, color: Colors.textMuted, marginBottom: 16 },
+  modalInput: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, color: Colors.text, fontSize: 16, marginBottom: 16 },
+  modalBtns: { flexDirection: 'row', gap: 12 },
+  modalCancel: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  modalCancelText: { color: Colors.text, fontWeight: '700' },
+  modalSave: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  modalSaveText: { color: '#fff', fontWeight: '800' },
 });
