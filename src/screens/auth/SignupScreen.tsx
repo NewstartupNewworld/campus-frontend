@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ActivityIndicator,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
+  ImageBackground,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +23,26 @@ const DEPARTMENTS = [
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
 type VerifyMethod = 'email' | 'studentId' | 'digitalId';
 
+const COLLEGE_IMAGES: Record<string, string> = {
+  'iit': 'https://images.unsplash.com/photo-1562774053-701939374585?w=800&q=80',
+  'nit': 'https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?w=800&q=80',
+  'bits': 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+  'delhi': 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&q=80',
+  'mumbai': 'https://images.unsplash.com/photo-1529253355930-ddbe423a2ac7?w=800&q=80',
+  'vit': 'https://images.unsplash.com/photo-1607237138185-eedd9c632b0b?w=800&q=80',
+  'srm': 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=800&q=80',
+  'default': 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800&q=80',
+};
+
+const getCollegeImage = (collegeName: string): string => {
+  if (collegeName.length < 3) return '';
+  const lower = collegeName.toLowerCase();
+  for (const key of Object.keys(COLLEGE_IMAGES)) {
+    if (key !== 'default' && lower.includes(key)) return COLLEGE_IMAGES[key];
+  }
+  return COLLEGE_IMAGES['default'];
+};
+
 export const SignupScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [step, setStep] = useState(1);
@@ -37,6 +58,8 @@ export const SignupScreen = () => {
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+
+  const collegeImage = getCollegeImage(college);
 
   const validateStep1 = () => {
     if (!password || !confirmPassword) {
@@ -85,7 +108,6 @@ export const SignupScreen = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Signup failed');
 
-      // Save token and navigate directly to app
       await AsyncStorage.setItem('token', data.token);
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
 
@@ -211,6 +233,20 @@ export const SignupScreen = () => {
                   placeholder="e.g. IIT Kharagpur" placeholderTextColor={Colors.textDim} />
               </View>
 
+              {/* College background wallpaper preview */}
+              {collegeImage ? (
+                <ImageBackground
+                  source={{ uri: collegeImage }}
+                  style={styles.collegePreview}
+                  imageStyle={styles.collegePreviewImage}
+                >
+                  <View style={styles.collegePreviewOverlay}>
+                    <Text style={styles.collegePreviewText}>{college}</Text>
+                    <Text style={styles.collegePreviewSub}>Your campus community awaits 🎓</Text>
+                  </View>
+                </ImageBackground>
+              ) : null}
+
               <Text style={styles.label}>Department</Text>
               <View style={styles.pillGrid}>
                 {DEPARTMENTS.map(dept => (
@@ -287,6 +323,11 @@ const styles = StyleSheet.create({
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, marginBottom: 14 },
   inputIcon: { fontSize: 16, marginRight: 8 },
   input: { flex: 1, color: Colors.text, fontSize: 14, paddingVertical: 12 },
+  collegePreview: { width: '100%', height: 140, borderRadius: 12, overflow: 'hidden', marginBottom: 16 },
+  collegePreviewImage: { borderRadius: 12 },
+  collegePreviewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end', padding: 14, borderRadius: 12 },
+  collegePreviewText: { fontSize: 18, fontWeight: '900', color: '#fff' },
+  collegePreviewSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   pill: { backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 7 },
   pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
