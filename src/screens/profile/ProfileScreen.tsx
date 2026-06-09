@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   SafeAreaView, ActivityIndicator, Switch, Alert, Image,
+  TextInput, Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -258,7 +259,8 @@ export const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'listings' | 'ratings' | 'badges'>('listings');
   const [profilePic, setProfilePic] = useState<string | null>(null);
-  const [uploadingPic, setUploadingPic] = useState(false);
+  const [editNameModal, setEditNameModal] = useState(false);
+  const [editNameText, setEditNameText] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -268,13 +270,15 @@ export const ProfileScreen = () => {
         if (savedPic) setProfilePic(savedPic);
         if (userStr) {
           const user = JSON.parse(userStr);
+          const studentName = user.student_name || '';
+          setEditNameText(studentName);
           setProfile({
             ...MOCK_PROFILE,
             id: user.id,
             anonymousHandle: user.anonymous_handle || MOCK_PROFILE.anonymousHandle,
             college: user.college || MOCK_PROFILE.college,
             department: user.department || MOCK_PROFILE.department,
-            studentName: user.student_name || '',
+            studentName,
             verified: user.verified || false,
           });
         } else {
@@ -312,6 +316,21 @@ export const ProfileScreen = () => {
     }
   };
 
+  const handleSaveName = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        user.student_name = editNameText;
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+        setProfile(prev => prev ? { ...prev, studentName: editNameText } : prev);
+      }
+      setEditNameModal(false);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save name.');
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -324,13 +343,6 @@ export const ProfileScreen = () => {
         }
       },
     ]);
-  };
-
-  const handleStatPress = (stat: string) => {
-    if (stat === 'listings') setActiveTab('listings');
-    if (stat === 'ratings') setActiveTab('ratings');
-    if (stat === 'badges') setActiveTab('badges');
-    // Scroll to tab content
   };
 
   if (loading) {
@@ -351,7 +363,6 @@ export const ProfileScreen = () => {
 
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          {/* Profile Picture */}
           <TouchableOpacity onPress={handlePickProfilePic} style={styles.avatarWrap}>
             {profilePic ? (
               <Image source={{ uri: profilePic }} style={styles.avatarImage} />
@@ -376,9 +387,15 @@ export const ProfileScreen = () => {
                 </View>
               )}
             </View>
-            {profile.studentName ? (
-              <Text style={styles.realName}>{profile.studentName}</Text>
-            ) : null}
+
+            {/* Editable name */}
+            <TouchableOpacity onPress={() => setEditNameModal(true)} style={styles.editNameBtn}>
+              <Text style={styles.realName}>
+                {profile.studentName || '✏️ Add your name'}
+              </Text>
+              <Text style={styles.editNameIcon}>✏️</Text>
+            </TouchableOpacity>
+
             <Text style={styles.college}>{profile.college}</Text>
             <Text style={styles.dept}>{profile.department} • Year {profile.year}</Text>
             <Text style={styles.joined}>
@@ -409,7 +426,7 @@ export const ProfileScreen = () => {
           </View>
         </View>
 
-        {/* Stats Row — clickable */}
+        {/* Stats Row */}
         <View style={styles.statsRow}>
           {[
             { icon: '🛍️', value: stats.listingsPosted, label: 'Listed', tab: 'listings' },
@@ -420,7 +437,7 @@ export const ProfileScreen = () => {
             <TouchableOpacity
               key={stat.label}
               style={sc.card}
-              onPress={() => handleStatPress(stat.tab)}
+              onPress={() => setActiveTab(stat.tab as any)}
               activeOpacity={0.7}
             >
               <Text style={sc.icon}>{stat.icon}</Text>
@@ -431,11 +448,7 @@ export const ProfileScreen = () => {
         </View>
 
         {/* Avg rating */}
-        <TouchableOpacity
-          style={styles.ratingBar}
-          onPress={() => handleStatPress('ratings')}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.ratingBar} onPress={() => setActiveTab('ratings')} activeOpacity={0.7}>
           <Text style={styles.ratingBarLabel}>Average Rating</Text>
           <Text style={styles.ratingBarStars}>{stars(stats.avgRating)}</Text>
           <Text style={styles.ratingBarVal}>{stats.avgRating} ({stats.ratingsReceived} ratings)</Text>
@@ -481,6 +494,32 @@ export const ProfileScreen = () => {
         <SettingsSection onLogout={handleLogout} />
 
       </ScrollView>
+
+      {/* Edit Name Modal */}
+      <Modal visible={editNameModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit your name</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editNameText}
+              onChangeText={setEditNameText}
+              placeholder="Your real name"
+              placeholderTextColor={Colors.textDim}
+              autoFocus
+            />
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setEditNameModal(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSave} onPress={handleSaveName}>
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 };
@@ -504,7 +543,9 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1, justifyContent: 'center', gap: 3 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   handle: { fontSize: 18, fontWeight: '900', color: Colors.text },
+  editNameBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   realName: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
+  editNameIcon: { fontSize: 11 },
   verifiedBadge: { backgroundColor: Colors.success + '22', borderRadius: 6, borderWidth: 1, borderColor: Colors.success + '55', paddingHorizontal: 7, paddingVertical: 2 },
   verifiedText: { fontSize: 10, fontWeight: '700', color: Colors.success },
   college: { fontSize: 13, color: Colors.accent, fontWeight: '700' },
@@ -532,4 +573,13 @@ const styles = StyleSheet.create({
   tabContent: { paddingHorizontal: 16, marginBottom: 20 },
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
   empty: { textAlign: 'center', color: Colors.textMuted, paddingVertical: 30, fontSize: 13 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '85%', borderWidth: 1, borderColor: Colors.border },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 16 },
+  modalInput: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, color: Colors.text, fontSize: 16, marginBottom: 16 },
+  modalBtns: { flexDirection: 'row', gap: 12 },
+  modalCancel: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  modalCancelText: { color: Colors.text, fontWeight: '700' },
+  modalSave: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  modalSaveText: { color: '#fff', fontWeight: '800' },
 });

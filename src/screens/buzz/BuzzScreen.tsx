@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, SafeAreaView, ActivityIndicator,
-  RefreshControl, Image, KeyboardAvoidingView, Platform, Modal,
+  StyleSheet, SafeAreaView, RefreshControl, Image,
+  KeyboardAvoidingView, Platform, Modal, Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../theme/colors';
 
 type PostCategory = 'All' | 'Meme' | 'Event' | 'Food' | 'Lost & Found' | 'Rant' | 'News';
@@ -180,7 +181,7 @@ const CommentSheet = ({
 
 const cs = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
   kavContainer: { width: '100%' },
   sheet: {
     backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
@@ -263,7 +264,7 @@ const ps = StyleSheet.create({
   trendingBadge: { backgroundColor: Colors.warn + '22', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   trendingText: { fontSize: 10, fontWeight: '700', color: Colors.warn },
   content: { fontSize: 14, color: Colors.text, lineHeight: 22, paddingHorizontal: 14, paddingBottom: 12 },
-  image: { width: '100%', height: 180 },
+  image: { width: '100%', height: 200 },
   reactionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.border, flexWrap: 'wrap' },
   reactionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, paddingVertical: 5 },
   reactionBtnActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '18' },
@@ -278,28 +279,66 @@ const CreatePostSheet = ({
 }: {
   visible: boolean;
   onClose: () => void;
-  onPost: (content: string, category: PostCategory) => void;
+  onPost: (content: string, category: PostCategory, image?: string) => void;
 }) => {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<PostCategory>('Meme');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const handleCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow camera access.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
 
   const handlePost = () => {
     if (!content.trim()) return;
-    onPost(content.trim(), category);
+    onPost(content.trim(), category, selectedImage || undefined);
     setContent('');
     setCategory('Meme');
+    setSelectedImage(null);
     onClose();
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <TouchableOpacity style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}>
+        <TouchableOpacity
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }}
+          onPress={onClose}
+        />
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}>
           <View style={cps.sheet}>
             <View style={cps.handle} />
             <Text style={cps.title}>New Buzz Post</Text>
             <Text style={cps.anon}>Posted anonymously as <Text style={{ color: Colors.accent }}>CampusOwl#42</Text></Text>
+
+            {/* Category pills */}
             <View style={cps.pills}>
               {(CATEGORIES.filter(c => c !== 'All') as PostCategory[]).map(cat => (
                 <TouchableOpacity
@@ -311,6 +350,8 @@ const CreatePostSheet = ({
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Text input */}
             <TextInput
               style={cps.input}
               value={content}
@@ -318,12 +359,38 @@ const CreatePostSheet = ({
               placeholder="What's happening on campus?"
               placeholderTextColor={Colors.textDim}
               multiline
-              numberOfLines={5}
+              numberOfLines={4}
               textAlignVertical="top"
               maxLength={500}
             />
             <Text style={cps.charCount}>{content.length}/500</Text>
-            <TouchableOpacity style={[cps.postBtn, !content.trim() && { opacity: 0.5 }]} onPress={handlePost} disabled={!content.trim()}>
+
+            {/* Selected image preview */}
+            {selectedImage && (
+              <View style={cps.imagePreviewWrap}>
+                <Image source={{ uri: selectedImage }} style={cps.imagePreview} resizeMode="cover" />
+                <TouchableOpacity style={cps.removeImage} onPress={() => setSelectedImage(null)}>
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Media buttons */}
+            <View style={cps.mediaRow}>
+              <TouchableOpacity style={cps.mediaBtn} onPress={handleCamera}>
+                <Text style={cps.mediaBtnText}>📷 Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={cps.mediaBtn} onPress={handlePickImage}>
+                <Text style={cps.mediaBtnText}>🖼️ Gallery</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Post button */}
+            <TouchableOpacity
+              style={[cps.postBtn, !content.trim() && { opacity: 0.5 }]}
+              onPress={handlePost}
+              disabled={!content.trim()}
+            >
               <Text style={cps.postBtnText}>⚡ Post to Buzz</Text>
             </TouchableOpacity>
           </View>
@@ -341,15 +408,20 @@ const cps = StyleSheet.create({
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   pill: { backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 6 },
   pillText: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
-  input: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12, color: Colors.text, fontSize: 14, minHeight: 100 },
-  charCount: { textAlign: 'right', fontSize: 11, color: Colors.textDim, marginTop: 4, marginBottom: 14 },
+  input: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12, color: Colors.text, fontSize: 14, minHeight: 80 },
+  charCount: { textAlign: 'right', fontSize: 11, color: Colors.textDim, marginTop: 4, marginBottom: 10 },
+  imagePreviewWrap: { position: 'relative', marginBottom: 10 },
+  imagePreview: { width: '100%', height: 160, borderRadius: 12 },
+  removeImage: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  mediaRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  mediaBtn: { flex: 1, backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingVertical: 10, alignItems: 'center' },
+  mediaBtnText: { fontSize: 13, fontWeight: '700', color: Colors.text },
   postBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   postBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });
 
 export const BuzzScreen = () => {
   const [posts, setPosts] = useState<BuzzPost[]>(MOCK_POSTS);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState<PostCategory>('All');
   const [commentPost, setCommentPost] = useState<BuzzPost | null>(null);
@@ -386,12 +458,13 @@ export const BuzzScreen = () => {
     });
   };
 
-  const handleCreatePost = (content: string, category: PostCategory) => {
+  const handleCreatePost = (content: string, category: PostCategory, image?: string) => {
     const newPost: BuzzPost = {
       id: Date.now().toString(),
       author: 'CampusOwl#42',
       category,
       content,
+      image,
       reactions: [
         { emoji: '🔥', count: 0, reacted: false },
         { emoji: '❤️', count: 0, reacted: false },
