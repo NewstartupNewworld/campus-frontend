@@ -16,11 +16,6 @@ type AuthStackParamList = {
   Main: undefined;
 };
 
-const DEPARTMENTS = [
-  'Computer Science', 'Electrical', 'Mechanical',
-  'Civil', 'Chemical', 'Mathematics', 'Physics', 'Other',
-];
-const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
 type VerifyMethod = 'email' | 'studentId' | 'digitalId';
 
 const COLLEGE_IMAGES: Record<string, string> = {
@@ -49,15 +44,21 @@ export const SignupScreen = () => {
   const [loading, setLoading] = useState(false);
   const [verifyMethod, setVerifyMethod] = useState<VerifyMethod>('email');
 
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [college, setCollege] = useState('');
-  const [department, setDepartment] = useState('Computer Science');
-  const [year, setYear] = useState('');
+  // Step 1 fields
   const [email, setEmail] = useState('');
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Step 2 fields
+  const [college, setCollege] = useState('');
+  const [department, setDepartment] = useState('');
+  const [year, setYear] = useState('');
+  const [course, setCourse] = useState('');
+  const [hostel, setHostel] = useState('');
+  const [interests, setInterests] = useState('');
 
   const collegeImage = getCollegeImage(college);
 
@@ -85,8 +86,8 @@ export const SignupScreen = () => {
   };
 
   const handleSignup = async () => {
-    if (!college.trim() || !department || !year) {
-      Alert.alert('Missing fields', 'Please fill all fields.'); return;
+    if (!college.trim() || !department.trim() || !year.trim()) {
+      Alert.alert('Missing fields', 'Please fill College, Department and Year.'); return;
     }
     setLoading(true);
     try {
@@ -103,6 +104,9 @@ export const SignupScreen = () => {
           college,
           department,
           year,
+          course: course || null,
+          hostel: hostel || null,
+          interests: interests || null,
         }),
       });
       const data = await response.json();
@@ -224,16 +228,17 @@ export const SignupScreen = () => {
           {step === 2 && (
             <View style={styles.card}>
               <Text style={styles.stepTitle}>🏫 Your College</Text>
-              <Text style={styles.stepSub}>Listings are shown only to students from the same campus.</Text>
+              <Text style={styles.stepSub}>Tell us about yourself so we can connect you with the right people.</Text>
 
-              <Text style={styles.label}>College Name</Text>
+              {/* College Name */}
+              <Text style={styles.label}>College Name *</Text>
               <View style={styles.inputWrap}>
                 <Text style={styles.inputIcon}>🏛️</Text>
                 <TextInput style={styles.input} value={college} onChangeText={setCollege}
                   placeholder="e.g. IIT Kharagpur" placeholderTextColor={Colors.textDim} />
               </View>
 
-              {/* College background wallpaper preview */}
+              {/* College wallpaper preview */}
               {collegeImage ? (
                 <ImageBackground
                   source={{ uri: collegeImage }}
@@ -247,28 +252,47 @@ export const SignupScreen = () => {
                 </ImageBackground>
               ) : null}
 
-              <Text style={styles.label}>Department</Text>
-              <View style={styles.pillGrid}>
-                {DEPARTMENTS.map(dept => (
-                  <TouchableOpacity key={dept}
-                    style={[styles.pill, department === dept && styles.pillActive]}
-                    onPress={() => setDepartment(dept)}>
-                    <Text style={[styles.pillText, department === dept && styles.pillTextActive]}>{dept}</Text>
-                  </TouchableOpacity>
-                ))}
+              {/* Department */}
+              <Text style={styles.label}>Department *</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>📚</Text>
+                <TextInput style={styles.input} value={department} onChangeText={setDepartment}
+                  placeholder="e.g. Computer Science, Mechanical..." placeholderTextColor={Colors.textDim} />
               </View>
 
-              <Text style={styles.label}>Year</Text>
-              <View style={styles.pillGrid}>
-                {YEARS.map(y => (
-                  <TouchableOpacity key={y}
-                    style={[styles.pill, year === y && styles.pillActive]}
-                    onPress={() => setYear(y)}>
-                    <Text style={[styles.pillText, year === y && styles.pillTextActive]}>{y}</Text>
-                  </TouchableOpacity>
-                ))}
+              {/* Year */}
+              <Text style={styles.label}>Year / Semester *</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>📅</Text>
+                <TextInput style={styles.input} value={year} onChangeText={setYear}
+                  placeholder="e.g. 2nd Year, Semester 3..." placeholderTextColor={Colors.textDim} />
               </View>
 
+              {/* Course */}
+              <Text style={styles.label}>Course / Program</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>🎓</Text>
+                <TextInput style={styles.input} value={course} onChangeText={setCourse}
+                  placeholder="e.g. B.Tech, MBA, BSc..." placeholderTextColor={Colors.textDim} />
+              </View>
+
+              {/* Hostel */}
+              <Text style={styles.label}>Hostel / Area</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>🏠</Text>
+                <TextInput style={styles.input} value={hostel} onChangeText={setHostel}
+                  placeholder="e.g. Hostel A, PG near campus..." placeholderTextColor={Colors.textDim} />
+              </View>
+
+              {/* Interests */}
+              <Text style={styles.label}>Interests (optional)</Text>
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputIcon}>⚡</Text>
+                <TextInput style={styles.input} value={interests} onChangeText={setInterests}
+                  placeholder="e.g. Coding, Music, Sports..." placeholderTextColor={Colors.textDim} />
+              </View>
+
+              {/* Anonymous handle note */}
               <View style={styles.anonCard}>
                 <Text style={{ fontSize: 24 }}>🎭</Text>
                 <View style={{ flex: 1 }}>
@@ -279,7 +303,9 @@ export const SignupScreen = () => {
 
               <TouchableOpacity
                 style={[styles.nextBtn, loading && { opacity: 0.7 }]}
-                onPress={handleSignup} disabled={loading}>
+                onPress={handleSignup}
+                disabled={loading}
+              >
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>🚀 Create Account</Text>}
               </TouchableOpacity>
             </View>
@@ -328,11 +354,6 @@ const styles = StyleSheet.create({
   collegePreviewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end', padding: 14, borderRadius: 12 },
   collegePreviewText: { fontSize: 18, fontWeight: '900', color: '#fff' },
   collegePreviewSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  pill: { backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 7 },
-  pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  pillText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
-  pillTextActive: { color: '#fff', fontWeight: '700' },
   anonCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: Colors.accent + '12', borderRadius: 12, borderWidth: 1, borderColor: Colors.accent + '33', padding: 14, marginBottom: 20 },
   anonTitle: { fontWeight: '700', fontSize: 13, color: Colors.text, marginBottom: 4 },
   anonSub: { fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
