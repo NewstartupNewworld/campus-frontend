@@ -262,29 +262,70 @@ export const ProfileScreen = () => {
   const [editNameModal, setEditNameModal] = useState(false);
   const [editNameText, setEditNameText] = useState('');
 
-  useEffect(() => {
+useEffect(() => {
     const load = async () => {
       try {
         const userStr = await AsyncStorage.getItem('user');
+        const token = await AsyncStorage.getItem('token');
         const savedPic = await AsyncStorage.getItem('profilePic');
         if (savedPic) setProfilePic(savedPic);
+
+        // Load real data from backend
+        if (token) {
+          const response = await fetch(`${API_URL}/api/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setProfile({
+              ...MOCK_PROFILE,
+              id: data.id,
+              anonymousHandle: data.anonymous_handle,
+              college: data.college,
+              department: data.department,
+              verified: data.verified,
+              trustScore: data.trust_score || 0,
+              joinedAt: data.created_at,
+              studentName: data.student_name || '',
+              stats: {
+                listingsPosted: parseInt(data.listings_count) || 0,
+                successfulSales: parseInt(data.sales_count) || 0,
+                buzzPosts: parseInt(data.buzz_count) || 0,
+                sosResponses: 0,
+                ratingsReceived: parseInt(data.ratings_count) || 0,
+                avgRating: parseFloat(data.avg_rating) || 0,
+              },
+              recentListings: data.recentListings || [],
+              recentRatings: data.recentRatings?.map((r: any) => ({
+                id: r.id || Date.now().toString(),
+                fromHandle: r.from_handle,
+                score: r.score,
+                comment: r.comment,
+                listingTitle: r.listing_title,
+                createdAt: r.created_at,
+              })) || [],
+            });
+            setEditNameText(data.student_name || '');
+            return;
+          }
+        }
+
+        // Fallback to AsyncStorage
         if (userStr) {
           const user = JSON.parse(userStr);
-          const studentName = user.student_name || '';
-          setEditNameText(studentName);
+          setEditNameText(user.student_name || '');
           setProfile({
             ...MOCK_PROFILE,
             id: user.id,
             anonymousHandle: user.anonymous_handle || MOCK_PROFILE.anonymousHandle,
             college: user.college || MOCK_PROFILE.college,
             department: user.department || MOCK_PROFILE.department,
-            studentName,
+            studentName: user.student_name || '',
             verified: user.verified || false,
           });
-        } else {
-          setProfile(MOCK_PROFILE);
         }
       } catch (e) {
+        console.error('Profile load error:', e);
         setProfile(MOCK_PROFILE);
       } finally {
         setLoading(false);
@@ -292,7 +333,6 @@ export const ProfileScreen = () => {
     };
     load();
   }, []);
-
   const handlePickProfilePic = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
