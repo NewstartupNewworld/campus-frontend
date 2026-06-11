@@ -42,13 +42,19 @@ export const LoginScreen = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Login failed');
 
-      // Save token and user data
       await AsyncStorage.setItem('token', data.token);
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
 
       navigation.navigate('Main' as never);
     } catch (err: any) {
-      Alert.alert('Login failed', err.message || 'Invalid email or password. Try again.');
+      const msg = err.message || '';
+      if (msg.includes('not found') || msg.includes('not registered') || msg.includes('No user') || msg.includes('User')) {
+        Alert.alert('Not registered', 'This email is not registered. Please sign up first.');
+      } else if (msg.includes('password') || msg.includes('incorrect') || msg.includes('wrong') || msg.includes('Invalid')) {
+        Alert.alert('Wrong password', 'The password you entered is incorrect. Try again.');
+      } else {
+        Alert.alert('Login failed', msg || 'Something went wrong. Try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -158,7 +164,6 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   scroll: { flexGrow: 1, padding: 24, justifyContent: 'center' },
-
   logoWrap: { alignItems: 'center', marginBottom: 32 },
   logo: {
     width: 72, height: 72, borderRadius: 20,
@@ -173,7 +178,6 @@ const styles = StyleSheet.create({
   logoText: { fontSize: 28, fontWeight: '900', color: '#fff' },
   appName: { fontSize: 26, fontWeight: '900', color: Colors.text, letterSpacing: 0.5 },
   tagline: { fontSize: 13, color: Colors.textMuted, marginTop: 4 },
-
   card: {
     backgroundColor: Colors.card, borderRadius: 20,
     borderWidth: 1, borderColor: Colors.border,
@@ -181,7 +185,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
   cardSub: { fontSize: 13, color: Colors.textMuted, marginBottom: 24 },
-
   label: {
     fontSize: 11, fontWeight: '700', color: Colors.textMuted,
     textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8,
@@ -194,27 +197,22 @@ const styles = StyleSheet.create({
   inputIcon: { fontSize: 16, marginRight: 8 },
   input: { flex: 1, color: Colors.text, fontSize: 14, paddingVertical: 12 },
   showHide: { color: Colors.accent, fontSize: 12, fontWeight: '700' },
-
   forgotWrap: { alignItems: 'flex-end', marginBottom: 20, marginTop: -8 },
   forgotText: { color: Colors.accent, fontSize: 12, fontWeight: '600' },
-
   loginBtn: {
     backgroundColor: Colors.accent, borderRadius: 14,
     paddingVertical: 15, alignItems: 'center',
   },
   loginBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   dividerText: { color: Colors.textDim, fontSize: 12 },
-
   signupBtn: {
     borderWidth: 1, borderColor: Colors.border, borderRadius: 14,
     paddingVertical: 14, alignItems: 'center',
     backgroundColor: Colors.cardAlt,
   },
   signupBtnText: { color: Colors.text, fontWeight: '700', fontSize: 15 },
-
   privacyNote: {
     textAlign: 'center', color: Colors.textDim,
     fontSize: 12, lineHeight: 20,
