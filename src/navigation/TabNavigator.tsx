@@ -11,11 +11,12 @@ import { ChatsListScreen } from '../screens/chat/ChatsListScreen';
 import { BuzzTabScreen } from '../screens/buzz/BuzzTabScreen';
 import { SOSScreen } from '../screens/sos/SOSScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { CollegeAccessScreen } from '../screens/profile/CollegeAccessScreen';
 
 const Tab = createBottomTabNavigator();
 const MarketStack = createNativeStackNavigator();
 const ChatStack = createNativeStackNavigator();
-
+const ProfileStack = createNativeStackNavigator();
 function MarketplaceStack() {
   return (
     <MarketStack.Navigator screenOptions={{ headerShown: false }}>
@@ -33,6 +34,14 @@ function ChatsStack() {
       <ChatStack.Screen name="ChatsList" component={ChatsListScreen} />
       <ChatStack.Screen name="ChatRoom" component={ChatRoomScreen} />
     </ChatStack.Navigator>
+  );
+}
+function ProfileStackScreen() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen name="CollegeAccess" component={CollegeAccessScreen} />
+    </ProfileStack.Navigator>
   );
 }
 
@@ -72,7 +81,7 @@ export function TabNavigator() {
       <Tab.Screen name="Buzz" component={BuzzTabScreen} />
       <Tab.Screen name="Chats" component={ChatsStack} />
       <Tab.Screen name="SOS" component={SOSScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackScreen} />
     </Tab.Navigator>
   );
 }

@@ -213,7 +213,7 @@ const lr = StyleSheet.create({
   statusText: { fontSize: 11, fontWeight: '700' },
 });
 
-const SettingsSection = ({ onLogout }: { onLogout: () => void }) => {
+const SettingsSection = ({ onLogout, onCollegeAccess }: { onLogout: () => void; onCollegeAccess: () => void }) => {
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const [anonymousMode, setAnonymousMode] = useState(true);
@@ -235,14 +235,21 @@ const SettingsSection = ({ onLogout }: { onLogout: () => void }) => {
         <View style={ss.divider} />
         <Row label="Anonymous Mode on Buzz" value={anonymousMode} onToggle={setAnonymousMode} />
       </View>
+      <TouchableOpacity style={ss.collegeAccessBtn} onPress={onCollegeAccess}>
+        <Text style={ss.collegeAccessText}>🏫 Cross-College Access</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={ss.logoutBtn} onPress={onLogout}>
         <Text style={ss.logoutText}>🚪 Log Out</Text>
       </TouchableOpacity>
+
     </View>
   );
 };
 
 const ss = StyleSheet.create({
+  collegeAccessBtn: { marginTop: 12, backgroundColor: Colors.accent + '18', borderRadius: 12, borderWidth: 1, borderColor: Colors.accent + '44', paddingVertical: 13, alignItems: 'center' },
+collegeAccessText: { color: Colors.accent, fontWeight: '800', fontSize: 14 },
   wrap: { paddingHorizontal: 16, marginBottom: 20 },
   title: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 12 },
   card: { backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
@@ -531,7 +538,7 @@ useEffect(() => {
         </View>
 
         {/* Settings */}
-        <SettingsSection onLogout={handleLogout} />
+        <SettingsSection onLogout={handleLogout} onCollegeAccess={() => navigation.navigate('CollegeAccess' as never)} />
 
       </ScrollView>
 
