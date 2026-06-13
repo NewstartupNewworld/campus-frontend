@@ -7,6 +7,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../theme/colors';
 import { requestChat, Listing } from '../../api/listings';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +24,35 @@ export const ListingDetailScreen = () => {
 
   const [activeImage, setActiveImage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const isOwner = (listing as any).isOwner;
+
+  const handleDelete = () => {
+    Alert.alert('Delete Listing', 'Are you sure you want to delete this listing? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          setDeleting(true);
+          try {
+            const token = await AsyncStorage.getItem('token');
+            const response = await fetch(`https://campus-backend-production-2dbb.up.railway.app/api/listings/${listing.id}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.ok) {
+              navigation.goBack();
+            } else {
+              Alert.alert('Error', 'Failed to delete listing.');
+            }
+          } catch (e) {
+            Alert.alert('Error', 'Failed to delete listing. Check your connection.');
+          } finally {
+            setDeleting(false);
+          }
+        }
+      },
+    ]);
+  };
 
   const handleInterested = async () => {
     setLoading(true);
@@ -61,7 +92,16 @@ export const ListingDetailScreen = () => {
           {/* Back button */}
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.backBtnText}>←</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>{/* Delete button — only for owner */}
+          {isOwner && (
+            <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting}>
+              {deleting
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.deleteBtnText}>🗑️</Text>
+              }
+            </TouchableOpacity>
+          )}
+          
 
           {/* Dots */}
           {listing.images.length > 1 && (
@@ -194,4 +234,11 @@ const styles = StyleSheet.create({
   },
   ctaText: { color: '#fff', fontWeight: '800', fontSize: 16 },
   ctaNote: { textAlign: 'center', color: Colors.textDim, fontSize: 11, marginTop: 8 },
+  deleteBtn: {
+    position: 'absolute', top: 14, right: 14,
+    backgroundColor: Colors.danger,
+    borderRadius: 10, width: 36, height: 36,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  deleteBtnText: { fontSize: 16 },
 });
