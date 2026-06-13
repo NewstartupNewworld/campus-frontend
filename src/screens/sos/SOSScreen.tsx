@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, Linking, Alert, Animated, Vibration, Platform,
-  TextInput, Modal,
+  ScrollView, Linking, Alert, Animated, Vibration,
+  TextInput, Modal, ActivityIndicator,
 } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../theme/colors';
+
+const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
 type AlertSeverity = 'critical' | 'warning' | 'info';
 
@@ -36,30 +38,6 @@ const DEFAULT_CONTACTS: QuickContact[] = [
   { label: 'Warden',          number: '1800-XXX-0002', icon: '🏠', color: Colors.warn },
   { label: 'Fire',            number: '101',           icon: '🔥', color: '#FF6B35' },
   { label: 'Women Helpline',  number: '1091',          icon: '💜', color: '#C97BFF' },
-];
-
-const MOCK_ALERTS: SOSAlert[] = [
-  {
-    id: '1', type: 'Medical Emergency',
-    message: 'Student collapsed near Library Block B. Medical help needed urgently.',
-    location: 'Library Block B', reportedBy: 'Anonymous#14',
-    severity: 'critical', createdAt: new Date(Date.now() - 300000).toISOString(),
-    resolved: false, respondersCount: 3,
-  },
-  {
-    id: '2', type: 'Suspicious Activity',
-    message: 'Unknown person loitering near Girls Hostel gate since 30 mins.',
-    location: "Girls' Hostel Gate", reportedBy: 'Anonymous#88',
-    severity: 'warning', createdAt: new Date(Date.now() - 1800000).toISOString(),
-    resolved: false, respondersCount: 1,
-  },
-  {
-    id: '3', type: 'Power Outage',
-    message: 'Complete power failure in Academic Block 3. Lifts not working.',
-    location: 'Academic Block 3', reportedBy: 'Anonymous#31',
-    severity: 'info', createdAt: new Date(Date.now() - 7200000).toISOString(),
-    resolved: true, respondersCount: 5,
-  },
 ];
 
 const ALERT_TYPES = [
@@ -205,7 +183,10 @@ const AlertCard = ({ alert, onRespond }: { alert: SOSAlert; onRespond: (id: stri
       <View style={ac.footer}>
         <Text style={ac.reporter}>Reported by {alert.reportedBy}</Text>
         {!alert.resolved && (
-          <TouchableOpacity style={[ac.respondBtn, { borderColor: color + '66', backgroundColor: color + '18' }]} onPress={() => onRespond(alert.id)}>
+          <TouchableOpacity
+            style={[ac.respondBtn, { borderColor: color + '66', backgroundColor: color + '18' }]}
+            onPress={() => onRespond(alert.id)}
+          >
             <Text style={[ac.respondText, { color }]}>🙋 Responding ({alert.respondersCount})</Text>
           </TouchableOpacity>
         )}
@@ -236,7 +217,9 @@ export const SOSScreen = () => {
   const [sosActive, setSosActive] = useState(false);
   const [alertType, setAlertType] = useState('Medical Emergency');
   const [location, setLocation] = useState<string | null>(null);
-  const [alerts, setAlerts] = useState<SOSAlert[]>(MOCK_ALERTS);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [alerts, setAlerts] = useState<SOSAlert[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
   const [countdown, setCountdown] = useState(5);
   const [countingDown, setCountingDown] = useState(false);
   const [contacts, setContacts] = useState<QuickContact[]>(DEFAULT_CONTACTS);
@@ -250,6 +233,7 @@ export const SOSScreen = () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
       const loc = await Location.getCurrentPositionAsync({});
+      setCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       const geo = await Location.reverseGeocodeAsync(loc.coords);
       if (geo.length > 0) {
         const g = geo[0];
@@ -257,7 +241,6 @@ export const SOSScreen = () => {
       }
     })();
 
-    // Load saved contacts
     const loadContacts = async () => {
       try {
         const saved = await AsyncStorage.getItem('quickContacts');
@@ -265,7 +248,36 @@ export const SOSScreen = () => {
       } catch (e) {}
     };
     loadContacts();
+    fetchAlerts();
   }, []);
+
+  const fetchAlerts = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/sos/alerts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (response.ok && data.alerts) {
+        const mapped: SOSAlert[] = data.alerts.map((a: any) => ({
+          id: a.id,
+          type: a.type,
+          message: a.message,
+          location: a.location_label || 'Campus',
+          reportedBy: a.reported_by || 'Anonymous',
+          severity: a.severity,
+          createdAt: a.created_at,
+          resolved: a.resolved,
+          respondersCount: parseInt(a.responders_count) || 0,
+        }));
+        setAlerts(mapped);
+      }
+    } catch (e) {
+      console.error('Failed to fetch alerts:', e);
+    } finally {
+      setLoadingAlerts(false);
+    }
+  };
 
   const handleSOSPress = () => {
     if (sosActive) {
@@ -294,18 +306,37 @@ export const SOSScreen = () => {
 
   const sendSOS = async () => {
     Vibration.vibrate([0, 500, 200, 500, 200, 500]);
-    const newAlert: SOSAlert = {
-      id: Date.now().toString(),
-      type: alertType,
-      message: `Emergency reported near ${location ?? 'campus'}. Immediate help needed.`,
-      location: location ?? 'Campus',
-      reportedBy: 'You (Anonymous)',
-      severity: alertType === 'Medical Emergency' || alertType === 'Fire' ? 'critical' : 'warning',
-      createdAt: new Date().toISOString(),
-      resolved: false,
-      respondersCount: 0,
-    };
-    setAlerts(prev => [newAlert, ...prev]);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/sos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          type: alertType,
+          message: `Emergency reported near ${location ?? 'campus'}. Immediate help needed.`,
+          latitude: coords?.latitude || null,
+          longitude: coords?.longitude || null,
+          locationLabel: location ?? 'Campus',
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        const newAlert: SOSAlert = {
+          id: data.id,
+          type: alertType,
+          message: `Emergency reported near ${location ?? 'campus'}. Immediate help needed.`,
+          location: location ?? 'Campus',
+          reportedBy: 'You (Anonymous)',
+          severity: alertType === 'Medical Emergency' || alertType === 'Fire' ? 'critical' : 'warning',
+          createdAt: new Date().toISOString(),
+          resolved: false,
+          respondersCount: 0,
+        };
+        setAlerts(prev => [newAlert, ...prev]);
+      }
+    } catch (e) {
+      console.error('SOS send error:', e);
+    }
   };
 
   const handleCancelCountdown = () => {
@@ -315,10 +346,19 @@ export const SOSScreen = () => {
     Vibration.cancel();
   };
 
-  const handleRespond = (id: string) => {
+  const handleRespond = async (id: string) => {
     setAlerts(prev => prev.map(a =>
       a.id === id ? { ...a, respondersCount: a.respondersCount + 1 } : a
     ));
+    try {
+      const token = await AsyncStorage.getItem('token');
+      await fetch(`${API_URL}/api/sos/${id}/respond`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (e) {
+      console.error('Respond error:', e);
+    }
   };
 
   const handleEditContact = (contact: QuickContact) => {
@@ -396,14 +436,19 @@ export const SOSScreen = () => {
               <Text style={styles.liveText}>Live</Text>
             </View>
           </View>
-          {alerts.map(a => (
-            <AlertCard key={a.id} alert={a} onRespond={handleRespond} />
-          ))}
+          {loadingAlerts ? (
+            <ActivityIndicator color={Colors.danger} style={{ marginVertical: 20 }} />
+          ) : alerts.length === 0 ? (
+            <Text style={styles.noAlerts}>No active alerts on campus 🟢</Text>
+          ) : (
+            alerts.map(a => (
+              <AlertCard key={a.id} alert={a} onRespond={handleRespond} />
+            ))
+          )}
         </View>
 
       </ScrollView>
 
-      {/* Edit Contact Modal */}
       <Modal visible={editModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -459,6 +504,7 @@ const styles = StyleSheet.create({
   liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   livePulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger },
   liveText: { fontSize: 11, fontWeight: '700', color: Colors.danger },
+  noAlerts: { textAlign: 'center', color: Colors.textMuted, paddingVertical: 20, fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '80%', borderWidth: 1, borderColor: Colors.border },
   modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 4 },
