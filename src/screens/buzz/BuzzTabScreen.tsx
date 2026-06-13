@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { BuzzScreen } from './BuzzScreen';
 import { GroupsScreen } from './GroupsScreen';
@@ -37,13 +37,13 @@ export const BuzzTabScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
-  tabBar: {
+ tabBar: {
     flexDirection: 'row',
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: Platform.OS === 'android' ? 24 : 12,
   },
   tab: {
     flex: 1,

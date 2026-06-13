@@ -40,9 +40,10 @@ export const CreateListingScreen = () => {
             Alert.alert('Permission needed', 'Please allow camera access.');
             return;
           }
-          const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true, aspect: [4, 3], quality: 0.7,
+         const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: false, quality: 0.8,
           });
+
           if (!result.canceled && result.assets[0]) {
             setImages(prev => [...prev, result.assets[0].uri]);
           }
@@ -55,10 +56,11 @@ export const CreateListingScreen = () => {
             Alert.alert('Permission needed', 'Please allow photo library access.');
             return;
           }
-          const result = await ImagePicker.launchImageLibraryAsync({
+         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true, aspect: [4, 3], quality: 0.7,
+            allowsEditing: false, quality: 0.8,
           });
+          
           if (!result.canceled && result.assets[0]) {
             setImages(prev => [...prev, result.assets[0].uri]);
           }
