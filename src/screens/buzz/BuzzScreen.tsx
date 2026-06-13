@@ -79,6 +79,51 @@ const iv = StyleSheet.create({
   closeText: { color: '#fff', fontSize: 18, fontWeight: '800' },
 });
 
+// ─── Stories Row ───────────────────────────────────────────────────────────
+
+const STORY_COLORS = ['#FF6B6B', '#4F8CFF', '#FFB347', '#3DDC84', '#C97BFF', '#00C9FF'];
+
+const StoriesRow = ({ posts }: { posts: BuzzPost[] }) => {
+  const uniqueAuthors = Array.from(new Set(posts.map(p => p.author))).slice(0, 8);
+  if (uniqueAuthors.length === 0) return null;
+
+  return (
+    <View style={sr.container}>
+      <FlatList
+        data={uniqueAuthors}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={a => a}
+        contentContainerStyle={sr.row}
+        renderItem={({ item, index }) => {
+          const color = STORY_COLORS[index % STORY_COLORS.length];
+          const initials = item.slice(0, 2).toUpperCase();
+          return (
+            <TouchableOpacity style={sr.storyWrap} activeOpacity={0.8}>
+              <View style={[sr.ring, { borderColor: color }]}>
+                <View style={[sr.avatar, { backgroundColor: color + '33' }]}>
+                  <Text style={[sr.initials, { color }]}>{initials}</Text>
+                </View>
+              </View>
+              <Text style={sr.name} numberOfLines={1}>{item.split('#')[0]}</Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </View>
+  );
+};
+
+const sr = StyleSheet.create({
+  container: { borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.card },
+  row: { paddingHorizontal: 12, paddingVertical: 10, gap: 12 },
+  storyWrap: { alignItems: 'center', gap: 4 },
+  ring: { width: 58, height: 58, borderRadius: 29, borderWidth: 2, padding: 2 },
+  avatar: { flex: 1, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  initials: { fontSize: 16, fontWeight: '800' },
+  name: { fontSize: 10, color: Colors.textMuted, width: 58, textAlign: 'center' },
+});
+
 // ─── Comment Sheet ──────────────────────────────────────────────────────────
 
 const CommentSheet = ({
@@ -198,7 +243,6 @@ const PostCard = ({
   const [showMenu, setShowMenu] = useState(false);
   const lastTap = React.useRef<number>(0);
   const heartScale = React.useRef(new Animated.Value(0)).current;
-
   const isOwner = post.author === currentUserHandle;
 
   const handleDoubleTap = () => {
@@ -399,7 +443,6 @@ const CreatePostSheet = ({
             <View style={cps.handle} />
             <Text style={cps.title}>New Buzz Post</Text>
             <Text style={cps.anon}>Posted anonymously</Text>
-
             <View style={cps.pills}>
               {(CATEGORIES.filter(c => c !== 'All') as PostCategory[]).map(cat => (
                 <TouchableOpacity
@@ -411,7 +454,6 @@ const CreatePostSheet = ({
                 </TouchableOpacity>
               ))}
             </View>
-
             <TextInput
               style={cps.input}
               value={content}
@@ -424,7 +466,6 @@ const CreatePostSheet = ({
               maxLength={500}
             />
             <Text style={cps.charCount}>{content.length}/500</Text>
-
             {selectedImage && (
               <View style={cps.imagePreviewWrap}>
                 <Image source={{ uri: selectedImage }} style={cps.imagePreview} resizeMode="cover" />
@@ -433,7 +474,6 @@ const CreatePostSheet = ({
                 </TouchableOpacity>
               </View>
             )}
-
             <View style={cps.mediaRow}>
               <TouchableOpacity style={cps.mediaBtn} onPress={handleCamera}>
                 <Text style={cps.mediaBtnText}>📷 Camera</Text>
@@ -442,7 +482,6 @@ const CreatePostSheet = ({
                 <Text style={cps.mediaBtnText}>🖼️ Gallery</Text>
               </TouchableOpacity>
             </View>
-
             <TouchableOpacity
               style={[cps.postBtn, !content.trim() && { opacity: 0.5 }]}
               onPress={handlePost}
@@ -488,6 +527,9 @@ export const BuzzScreen = () => {
   const [createVisible, setCreateVisible] = useState(false);
   const [currentUserHandle, setCurrentUserHandle] = useState('');
   const [viewerImage, setViewerImage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -502,12 +544,12 @@ export const BuzzScreen = () => {
     loadUser();
   }, []);
 
-  const fetchPosts = useCallback(async (category: PostCategory) => {
+  const fetchPosts = useCallback(async (category: PostCategory, pageNum: number = 1, append: boolean = false) => {
     try {
       const token = await AsyncStorage.getItem('token');
       const url = category === 'All'
-        ? `${API_URL}/api/buzz/feed`
-        : `${API_URL}/api/buzz/feed?category=${encodeURIComponent(category)}`;
+        ? `${API_URL}/api/buzz/feed?page=${pageNum}`
+        : `${API_URL}/api/buzz/feed?category=${encodeURIComponent(category)}&page=${pageNum}`;
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -525,19 +567,27 @@ export const BuzzScreen = () => {
           createdAt: p.created_at,
           trending: parseInt(p.comment_count) > 5,
         }));
-        setPosts(mapped);
+        if (append) {
+          setPosts(prev => [...prev, ...mapped]);
+        } else {
+          setPosts(mapped);
+        }
+        setHasMore(mapped.length === 20);
       }
     } catch (e) {
       console.error('Fetch buzz error:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    fetchPosts(activeCategory);
+    setPage(1);
+    setHasMore(true);
+    fetchPosts(activeCategory, 1, false);
   }, [activeCategory, fetchPosts]);
 
   const handleReact = async (postId: string, emoji: string) => {
@@ -556,15 +606,10 @@ export const BuzzScreen = () => {
       const token = await AsyncStorage.getItem('token');
       await fetch(`${API_URL}/api/buzz/${postId}/react`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ emoji }),
       });
-    } catch (e) {
-      console.error('React error:', e);
-    }
+    } catch (e) { console.error('React error:', e); }
   };
 
   const fetchComments = async (postId: string) => {
@@ -577,10 +622,7 @@ export const BuzzScreen = () => {
       const data = await response.json();
       if (response.ok && Array.isArray(data)) {
         const comments: Comment[] = data.map((c: any) => ({
-          id: c.id,
-          author: c.author,
-          text: c.text,
-          createdAt: c.created_at,
+          id: c.id, author: c.author, text: c.text, createdAt: c.created_at,
         }));
         setPosts(prev => {
           const updated = prev.map(p => p.id === postId ? { ...p, comments } : p);
@@ -589,9 +631,7 @@ export const BuzzScreen = () => {
           return updated;
         });
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   };
 
   const handleOpenComments = (post: BuzzPost) => {
@@ -604,19 +644,13 @@ export const BuzzScreen = () => {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/buzz/${postId}/comments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ text }),
       });
       const data = await response.json();
       if (response.ok) {
         const newComment: Comment = {
-          id: data.id,
-          author: data.author,
-          text: data.text,
-          createdAt: data.created_at,
+          id: data.id, author: data.author, text: data.text, createdAt: data.created_at,
         };
         setPosts(prev => {
           const updated = prev.map(p =>
@@ -641,15 +675,12 @@ export const BuzzScreen = () => {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/buzz`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ content, category, imageUrl: image || null }),
       });
       const data = await response.json();
       if (response.ok) {
-        fetchPosts(activeCategory);
+        fetchPosts(activeCategory, 1, false);
       } else {
         Alert.alert('Error', data.error || 'Failed to post');
       }
@@ -684,14 +715,22 @@ export const BuzzScreen = () => {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (e) {
-      console.error('Save error:', e);
-    }
+    } catch (e) { console.error('Save error:', e); }
+  };
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchPosts(activeCategory, nextPage, true);
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    fetchPosts(activeCategory);
+    setPage(1);
+    setHasMore(true);
+    fetchPosts(activeCategory, 1, false);
   };
 
   return (
@@ -732,6 +771,9 @@ export const BuzzScreen = () => {
           contentContainerStyle={styles.feed}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.accent} />}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListHeaderComponent={<StoriesRow posts={posts} />}
           renderItem={({ item }) => (
             <PostCard
               post={item}
@@ -744,6 +786,9 @@ export const BuzzScreen = () => {
             />
           )}
           ListEmptyComponent={<Text style={styles.empty}>No posts yet. Be the first to buzz! ⚡</Text>}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 20 }} /> : null
+          }
         />
       )}
 
