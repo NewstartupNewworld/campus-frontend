@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, SafeAreaView,
-  ActivityIndicator,
+  ActivityIndicator, Image, Modal, Alert,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { io, Socket } from 'socket.io-client';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../theme/colors';
 import { RatingModal } from '../../components/RatingModal';
 
@@ -19,6 +20,8 @@ interface Message {
   id: string;
   senderId: string;
   text: string;
+  imageUrl?: string | null;
+  read?: boolean;
   createdAt: string;
   type: 'text' | 'system';
 }
@@ -52,7 +55,28 @@ const formatDate = (iso: string) => {
   return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 };
 
-const MessageBubble = ({ message, isOwn }: { message: Message; isOwn: boolean }) => {
+const ImageViewerModal = ({ visible, uri, onClose }: { visible: boolean; uri: string | null; onClose: () => void }) => {
+  if (!uri) return null;
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={iv.overlay} activeOpacity={1} onPress={onClose}>
+        <Image source={{ uri }} style={iv.image} resizeMode="contain" />
+        <TouchableOpacity style={iv.closeBtn} onPress={onClose}>
+          <Text style={iv.closeText}>✕</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+const iv = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  image: { width: '100%', height: '80%' },
+  closeBtn: { position: 'absolute', top: 50, right: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  closeText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+});
+
+const MessageBubble = ({ message, isOwn, onImagePress }: { message: Message; isOwn: boolean; onImagePress: (uri: string) => void }) => {
   if (message.type === 'system') {
     return (
       <View style={styles.systemMsgWrap}>
@@ -62,10 +86,17 @@ const MessageBubble = ({ message, isOwn }: { message: Message; isOwn: boolean })
   }
   return (
     <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
-      <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-        <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{message.text}</Text>
+      <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther, message.imageUrl && styles.bubbleWithImage]}>
+        {message.imageUrl && (
+          <TouchableOpacity onPress={() => onImagePress(message.imageUrl!)} activeOpacity={0.9}>
+            <Image source={{ uri: message.imageUrl }} style={styles.bubbleImage} resizeMode="cover" />
+          </TouchableOpacity>
+        )}
+        {!!message.text && (
+          <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn, message.imageUrl && { marginTop: 6 }]}>{message.text}</Text>
+        )}
         <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>
-          {formatTime(message.createdAt)}{isOwn && '  ✓✓'}
+          {formatTime(message.createdAt)}{isOwn && (message.read ? '  ✓✓' : '  ✓')}
         </Text>
       </View>
     </View>
@@ -110,6 +141,7 @@ export const ChatRoomScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ChatRoom'>>();
   const { chatId, listingTitle } = route.params;
+  const isFocused = useIsFocused();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -117,6 +149,8 @@ export const ChatRoomScreen = () => {
   const [typing, setTyping] = useState(false);
   const [userId, setUserId] = useState('');
   const [showRating, setShowRating] = useState(false);
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [chatMeta, setChatMeta] = useState<ChatMeta>({
     id: chatId,
     status: 'pending',
@@ -147,11 +181,20 @@ export const ChatRoomScreen = () => {
 
         socket.on('connect', () => {
           socket.emit('join_chat', { chatId });
+          socket.emit('mark_read', { chatId, userId: userStr ? JSON.parse(userStr).id : '' });
         });
 
         socket.on('new_message', (msg: Message) => {
           setMessages(prev => [...prev, msg]);
           scrollToBottom();
+          // Mark as read immediately if chat is open
+          socket.emit('mark_read', { chatId, userId: userStr ? JSON.parse(userStr).id : '' });
+        });
+
+        socket.on('messages_read', ({ readBy }: { readBy: string }) => {
+          setMessages(prev => prev.map(m =>
+            m.senderId !== readBy ? { ...m, read: true } : m
+          ));
         });
 
         socket.on('typing', () => {
@@ -217,24 +260,65 @@ export const ChatRoomScreen = () => {
     };
   }, [chatId]);
 
+  // Mark as read whenever screen comes into focus
+  useEffect(() => {
+    if (isFocused && userId && socketRef.current) {
+      socketRef.current.emit('mark_read', { chatId, userId });
+    }
+  }, [isFocused, userId]);
+
   const scrollToBottom = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   }, []);
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || chatMeta.status === 'pending') return;
+    if ((!text && !pendingImage) || chatMeta.status === 'pending') return;
     setInput('');
+    const imageToSend = pendingImage;
+    setPendingImage(null);
     socketRef.current?.emit('send_message', {
       chatId,
       text,
       senderId: userId,
+      imageUrl: imageToSend,
     });
   };
 
   const handleInputChange = (text: string) => {
     setInput(text);
     socketRef.current?.emit('typing', { chatId, userId });
+  };
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPendingImage(result.assets[0].uri);
+    }
+  };
+
+  const handleCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow camera access.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPendingImage(result.assets[0].uri);
+    }
   };
 
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
@@ -247,7 +331,7 @@ export const ChatRoomScreen = () => {
             <Text style={styles.dateSeparatorText}>{formatDate(item.createdAt)}</Text>
           </View>
         )}
-        <MessageBubble message={item} isOwn={item.senderId === userId} />
+        <MessageBubble message={item} isOwn={item.senderId === userId} onImagePress={setViewerImage} />
       </>
     );
   };
@@ -308,6 +392,16 @@ export const ChatRoomScreen = () => {
         />
       )}
 
+      {/* Pending image preview */}
+      {pendingImage && (
+        <View style={styles.pendingImageWrap}>
+          <Image source={{ uri: pendingImage }} style={styles.pendingImagePreview} resizeMode="cover" />
+          <TouchableOpacity style={styles.removePendingImage} onPress={() => setPendingImage(null)}>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Input */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.inputRow}>
@@ -319,6 +413,12 @@ export const ChatRoomScreen = () => {
             </View>
           ) : (
             <>
+              <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage}>
+                <Text style={styles.attachIcon}>🖼️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachBtn} onPress={handleCamera}>
+                <Text style={styles.attachIcon}>📷</Text>
+              </TouchableOpacity>
               <TextInput
                 style={styles.input}
                 value={input}
@@ -329,9 +429,9 @@ export const ChatRoomScreen = () => {
                 maxLength={1000}
               />
               <TouchableOpacity
-                style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+                style={[styles.sendBtn, !input.trim() && !pendingImage && styles.sendBtnDisabled]}
                 onPress={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() && !pendingImage}
               >
                 <Text style={styles.sendIcon}>➤</Text>
               </TouchableOpacity>
@@ -348,6 +448,13 @@ export const ChatRoomScreen = () => {
         listingId={chatId}
         listingTitle={listingTitle}
         sellerHandle={chatMeta.sellerName || 'Seller'}
+      />
+
+      {/* Image Viewer */}
+      <ImageViewerModal
+        visible={!!viewerImage}
+        uri={viewerImage}
+        onClose={() => setViewerImage(null)}
       />
     </SafeAreaView>
   );
@@ -408,18 +515,29 @@ const styles = StyleSheet.create({
   bubbleRowOwn: { justifyContent: 'flex-end' },
   bubbleRowOther: { justifyContent: 'flex-start' },
   bubble: { maxWidth: '75%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
+  bubbleWithImage: { padding: 6 },
+  bubbleImage: { width: 200, height: 200, borderRadius: 12 },
   bubbleOwn: { backgroundColor: Colors.accent, borderBottomRightRadius: 4 },
   bubbleOther: { backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14, color: Colors.textMuted, lineHeight: 20 },
   bubbleTextOwn: { color: '#fff' },
   bubbleTime: { fontSize: 10, color: Colors.textDim, marginTop: 4, textAlign: 'right' },
   bubbleTimeOwn: { color: 'rgba(255,255,255,0.6)' },
+  pendingImageWrap: { position: 'relative', marginHorizontal: 14, marginBottom: 8 },
+  pendingImagePreview: { width: 100, height: 100, borderRadius: 12 },
+  removePendingImage: { position: 'absolute', top: -6, right: -6, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   inputRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingHorizontal: 14, paddingVertical: 10,
     borderTopWidth: 1, borderTopColor: Colors.border,
     backgroundColor: Colors.bg,
   },
+  attachBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  attachIcon: { fontSize: 16 },
   input: {
     flex: 1, backgroundColor: Colors.card, borderRadius: 20,
     borderWidth: 1, borderColor: Colors.border,
