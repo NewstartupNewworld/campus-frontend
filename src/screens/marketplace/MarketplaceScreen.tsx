@@ -14,6 +14,8 @@ const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 const CATEGORIES = ['All', 'Books', 'Electronics', 'Clothes', 'Food', 'Others'];
 const CONDITIONS = ['All', 'New', 'Like New', 'Good', 'Fair'];
 const SORT_OPTIONS = ['Newest', 'Price: Low to High', 'Price: High to Low', 'Most Popular'];
+const SEARCH_HISTORY_KEY = 'marketplaceSearchHistory';
+const MAX_HISTORY = 8;
 
 type RootStackParamList = {
   ListingDetail: { listing: any };
@@ -33,6 +35,51 @@ export const MarketplaceScreen = () => {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [totalCount, setTotalCount] = useState(0);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(SEARCH_HISTORY_KEY);
+        if (saved) setSearchHistory(JSON.parse(saved));
+      } catch (e) {}
+    };
+    loadHistory();
+  }, []);
+
+  const saveSearchToHistory = useCallback(async (term: string) => {
+    if (!term.trim()) return;
+    setSearchHistory(prev => {
+      const updated = [term, ...prev.filter(h => h.toLowerCase() !== term.toLowerCase())].slice(0, MAX_HISTORY);
+      AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const removeFromHistory = (term: string) => {
+    setSearchHistory(prev => {
+      const updated = prev.filter(h => h !== term);
+      AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearHistory = () => {
+    setSearchHistory([]);
+    AsyncStorage.removeItem(SEARCH_HISTORY_KEY);
+  };
+
+  const handleSearchSubmit = () => {
+    if (search.trim()) saveSearchToHistory(search.trim());
+    setSearchFocused(false);
+  };
+
+  const handleHistoryTap = (term: string) => {
+    setSearch(term);
+    saveSearchToHistory(term);
+    setSearchFocused(false);
+  };
 
   const loadListings = useCallback(async () => {
     try {
@@ -98,6 +145,8 @@ export const MarketplaceScreen = () => {
     sortBy !== 'Newest',
   ].filter(Boolean).length;
 
+  const showHistoryDropdown = searchFocused && search.length === 0 && searchHistory.length > 0;
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -131,6 +180,10 @@ export const MarketplaceScreen = () => {
           style={styles.searchInput}
           value={search}
           onChangeText={setSearch}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
           placeholder="Search listings..."
           placeholderTextColor={Colors.textDim}
         />
@@ -140,6 +193,27 @@ export const MarketplaceScreen = () => {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Search History Dropdown */}
+      {showHistoryDropdown && (
+        <View style={styles.historyDropdown}>
+          <View style={styles.historyHeader}>
+            <Text style={styles.historyTitle}>Recent Searches</Text>
+            <TouchableOpacity onPress={clearHistory}>
+              <Text style={styles.historyClear}>Clear all</Text>
+            </TouchableOpacity>
+          </View>
+          {searchHistory.map(term => (
+            <TouchableOpacity key={term} style={styles.historyRow} onPress={() => handleHistoryTap(term)}>
+              <Text style={styles.historyIcon}>🕒</Text>
+              <Text style={styles.historyText}>{term}</Text>
+              <TouchableOpacity onPress={() => removeFromHistory(term)} style={styles.historyRemove}>
+                <Text style={styles.historyRemoveText}>✕</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Categories */}
       <ScrollView
@@ -310,6 +384,19 @@ const styles = StyleSheet.create({
   },
   searchIcon: { fontSize: 14, marginRight: 6 },
   searchInput: { flex: 1, color: Colors.text, fontSize: 14, paddingVertical: 10 },
+  historyDropdown: {
+    backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1,
+    borderColor: Colors.border, marginHorizontal: 16, marginBottom: 8,
+    padding: 10, zIndex: 10,
+  },
+  historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 6 },
+  historyTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
+  historyClear: { fontSize: 11, fontWeight: '700', color: Colors.accent },
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 6, gap: 10 },
+  historyIcon: { fontSize: 13 },
+  historyText: { flex: 1, fontSize: 13, color: Colors.text },
+  historyRemove: { padding: 4 },
+  historyRemoveText: { fontSize: 11, color: Colors.textDim },
   categories: { flexGrow: 0, marginBottom: 8 },
   categoriesContent: { paddingHorizontal: 16, gap: 8 },
   pill: {
