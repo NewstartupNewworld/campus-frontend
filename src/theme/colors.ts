@@ -1,23 +1,33 @@
 export const Colors = {
-  bg: '#0F1115',
-  card: '#1A1D24',
-  cardAlt: '#1F2330',
-  accent: '#4F8CFF',
-  accentDim: '#2A4A8A',
+  bg: '#0B0D12',
+  card: '#15171F',
+  cardAlt: '#1B1E29',
+  accent: '#5B8DEF',
+  accentAlt: '#8B7CFF',
+  accentDim: '#2E3B5E',
   success: '#3DDC84',
   warn: '#FFB347',
-  danger: '#FF5C5C',
-  text: '#FFFFFF',
-  textMuted: '#8A8FA8',
-  textDim: '#555B72',
-  border: '#252A38',
+  danger: '#FF6B6B',
+  text: '#F4F4F6',
+  textMuted: '#9398AB',
+  textDim: '#5C6178',
+  border: '#23262F',
+  borderStrong: '#33384A',
 };
 
 export const Typography = {
-  h1: { fontSize: 24, fontWeight: '900' as const, color: Colors.text },
-  h2: { fontSize: 20, fontWeight: '800' as const, color: Colors.text },
-  h3: { fontSize: 16, fontWeight: '700' as const, color: Colors.text },
+  h1: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, letterSpacing: -0.3 },
+  h2: { fontSize: 19, fontWeight: '800' as const, color: Colors.text, letterSpacing: -0.2 },
+  h3: { fontSize: 15, fontWeight: '700' as const, color: Colors.text },
   body: { fontSize: 14, fontWeight: '400' as const, color: Colors.text },
   caption: { fontSize: 12, fontWeight: '400' as const, color: Colors.textMuted },
   label: { fontSize: 11, fontWeight: '700' as const, color: Colors.textMuted, textTransform: 'uppercase' as const, letterSpacing: 0.6 },
+};
+
+export const Radius = {
+  sm: 10,
+  md: 14,
+  lg: 20,
+  xl: 28,
+  pill: 999,
 };
