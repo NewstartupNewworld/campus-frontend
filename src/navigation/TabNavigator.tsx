@@ -12,6 +12,7 @@ import { BuzzTabScreen } from '../screens/buzz/BuzzTabScreen';
 import { SOSScreen } from '../screens/sos/SOSScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { CollegeAccessScreen } from '../screens/profile/CollegeAccessScreen';
+import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
 
 const Tab = createBottomTabNavigator();
 const MarketStack = createNativeStackNavigator();
@@ -41,6 +42,7 @@ function ProfileStackScreen() {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="CollegeAccess" component={CollegeAccessScreen} />
+      <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
     </ProfileStack.Navigator>
   );
 }

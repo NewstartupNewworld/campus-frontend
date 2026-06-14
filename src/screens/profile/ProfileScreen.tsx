@@ -268,6 +268,7 @@ export const ProfileScreen = () => {
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [editNameModal, setEditNameModal] = useState(false);
   const [editNameText, setEditNameText] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
 
 useEffect(() => {
     const load = async () => {
@@ -339,7 +340,20 @@ useEffect(() => {
       }
     };
     load();
+
+    const loadUnread = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (response.ok) setUnreadCount(data.unreadCount || 0);
+      } catch (e) {}
+    };
+    loadUnread();
   }, []);
+
   const handlePickProfilePic = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -410,6 +424,14 @@ useEffect(() => {
 
         {/* Profile Header */}
         <View style={styles.profileHeader}>
+          <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications' as never)}>
+            <Text style={styles.bellIcon}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity onPress={handlePickProfilePic} style={styles.avatarWrap}>
             {profilePic ? (
               <Image source={{ uri: profilePic }} style={styles.avatarImage} />
@@ -581,7 +603,11 @@ const sc = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   scroll: { paddingBottom: 40 },
-  profileHeader: { flexDirection: 'row', gap: 14, padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  profileHeader: { flexDirection: 'row', gap: 14, padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border, position: 'relative' },
+  bellBtn: { position: 'absolute', top: 16, right: 16, width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  bellIcon: { fontSize: 16 },
+  bellBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: Colors.danger, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   avatarWrap: { position: 'relative' },
   avatarImage: { width: 68, height: 68, borderRadius: 34 },
   avatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
