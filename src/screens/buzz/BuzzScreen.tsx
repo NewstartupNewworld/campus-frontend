@@ -350,7 +350,7 @@ const PostCard = ({
 };
 
 const ps = StyleSheet.create({
-  card: { backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, marginHorizontal: 14, marginBottom: 12, overflow: 'hidden' },
+  card: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, marginHorizontal: 14, marginBottom: 12, overflow: 'hidden' },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 14, paddingBottom: 10 },
 authorAvatar: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   authorAvatarText: { fontSize: 13, fontWeight: '700', color: '#fff' },

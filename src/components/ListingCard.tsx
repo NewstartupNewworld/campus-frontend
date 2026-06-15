@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     backgroundColor: Colors.card,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.border,
@@ -142,11 +142,11 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 11,
   },
-  interestedBtn: {
+ interestedBtn: {
     backgroundColor: Colors.accent,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
   },
   interestedText: {
     color: '#fff',
