@@ -9,6 +9,7 @@ import { CreateListingScreen } from '../screens/marketplace/CreateListingScreen'
 import { ChatRoomScreen } from '../screens/chat/ChatRoomScreen';
 import { ChatsListScreen } from '../screens/chat/ChatsListScreen';
 import { BuzzTabScreen } from '../screens/buzz/BuzzTabScreen';
+import { GroupChatScreen } from '../screens/buzz/GroupChatScreen';
 import { SOSScreen } from '../screens/sos/SOSScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { CollegeAccessScreen } from '../screens/profile/CollegeAccessScreen';
@@ -18,6 +19,8 @@ const Tab = createBottomTabNavigator();
 const MarketStack = createNativeStackNavigator();
 const ChatStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
+const BuzzStack = createNativeStackNavigator();
+
 function MarketplaceStack() {
   return (
     <MarketStack.Navigator screenOptions={{ headerShown: false }}>
@@ -37,6 +40,7 @@ function ChatsStack() {
     </ChatStack.Navigator>
   );
 }
+
 function ProfileStackScreen() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -44,6 +48,15 @@ function ProfileStackScreen() {
       <ProfileStack.Screen name="CollegeAccess" component={CollegeAccessScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
     </ProfileStack.Navigator>
+  );
+}
+
+function BuzzStackScreen() {
+  return (
+    <BuzzStack.Navigator screenOptions={{ headerShown: false }}>
+      <BuzzStack.Screen name="BuzzMain" component={BuzzTabScreen} />
+      <BuzzStack.Screen name="GroupChat" component={GroupChatScreen} />
+    </BuzzStack.Navigator>
   );
 }
 
@@ -80,7 +93,7 @@ export function TabNavigator() {
       })}
     >
       <Tab.Screen name="Marketplace" component={MarketplaceStack} />
-      <Tab.Screen name="Buzz" component={BuzzTabScreen} />
+      <Tab.Screen name="Buzz" component={BuzzStackScreen} />
       <Tab.Screen name="Chats" component={ChatsStack} />
       <Tab.Screen name="SOS" component={SOSScreen} />
       <Tab.Screen name="Profile" component={ProfileStackScreen} />
