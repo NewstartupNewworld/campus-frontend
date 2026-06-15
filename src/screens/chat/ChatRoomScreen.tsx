@@ -22,6 +22,8 @@ interface Message {
   text: string;
   imageUrl?: string | null;
   read?: boolean;
+  offerAmount?: number | null;
+  offerStatus?: string | null;
   createdAt: string;
   type: 'text' | 'system';
 }
@@ -76,7 +78,7 @@ const iv = StyleSheet.create({
   closeText: { color: '#fff', fontSize: 18, fontWeight: '800' },
 });
 
-const MessageBubble = ({ message, isOwn, onImagePress }: { message: Message; isOwn: boolean; onImagePress: (uri: string) => void }) => {
+const MessageBubble = ({ message, isOwn, onImagePress, onRespondOffer }: { message: Message; isOwn: boolean; onImagePress: (uri: string) => void; onRespondOffer: (messageId: string, status: 'accepted' | 'rejected') => void }) => {
   if (message.type === 'system') {
     return (
       <View style={styles.systemMsgWrap}>
@@ -84,6 +86,36 @@ const MessageBubble = ({ message, isOwn, onImagePress }: { message: Message; isO
       </View>
     );
   }
+
+  if (message.offerAmount) {
+    const statusColor = message.offerStatus === 'accepted' ? Colors.success : message.offerStatus === 'rejected' ? Colors.danger : Colors.warn;
+    return (
+      <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
+        <View style={[styles.offerCard, { borderColor: statusColor + '55' }]}>
+          <Text style={styles.offerLabel}>{isOwn ? 'Your Offer' : 'Price Offer'}</Text>
+          <Text style={styles.offerAmount}>₹{message.offerAmount}</Text>
+          {message.offerStatus === 'pending' && !isOwn ? (
+            <View style={styles.offerBtnRow}>
+              <TouchableOpacity style={[styles.offerBtn, styles.offerAccept]} onPress={() => onRespondOffer(message.id, 'accepted')}>
+                <Text style={styles.offerBtnTextAccept}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.offerBtn, styles.offerReject]} onPress={() => onRespondOffer(message.id, 'rejected')}>
+                <Text style={styles.offerBtnTextReject}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.offerStatusBadge, { backgroundColor: statusColor + '18', borderColor: statusColor + '44' }]}>
+              <Text style={[styles.offerStatusText, { color: statusColor }]}>
+                {message.offerStatus === 'accepted' ? '✓ Accepted' : message.offerStatus === 'rejected' ? '✕ Rejected' : '⏳ Pending'}
+              </Text>
+            </View>
+          )}
+          <Text style={styles.offerTime}>{formatTime(message.createdAt)}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
       <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther, message.imageUrl && styles.bubbleWithImage]}>
@@ -151,6 +183,8 @@ export const ChatRoomScreen = () => {
   const [showRating, setShowRating] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [offerModalVisible, setOfferModalVisible] = useState(false);
+  const [offerAmount, setOfferAmount] = useState('');
   const [chatMeta, setChatMeta] = useState<ChatMeta>({
     id: chatId,
     status: 'pending',
@@ -194,6 +228,12 @@ export const ChatRoomScreen = () => {
         socket.on('messages_read', ({ readBy }: { readBy: string }) => {
           setMessages(prev => prev.map(m =>
             m.senderId !== readBy ? { ...m, read: true } : m
+          ));
+        });
+
+        socket.on('offer_updated', ({ messageId, status }: { messageId: string; status: string }) => {
+          setMessages(prev => prev.map(m =>
+            m.id === messageId ? { ...m, offerStatus: status } : m
           ));
         });
 
@@ -285,6 +325,24 @@ export const ChatRoomScreen = () => {
     });
   };
 
+  const handleSendOffer = () => {
+    const amount = Number(offerAmount);
+    if (!amount || amount <= 0) return;
+    socketRef.current?.emit('send_message', {
+      chatId,
+      text: '',
+      senderId: userId,
+      offerAmount: amount,
+    });
+    setOfferAmount('');
+    setOfferModalVisible(false);
+  };
+
+  const handleRespondOffer = (messageId: string, status: 'accepted' | 'rejected') => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, offerStatus: status } : m));
+    socketRef.current?.emit('respond_offer', { chatId, messageId, status });
+  };
+
   const handleInputChange = (text: string) => {
     setInput(text);
     socketRef.current?.emit('typing', { chatId, userId });
@@ -331,7 +389,7 @@ export const ChatRoomScreen = () => {
             <Text style={styles.dateSeparatorText}>{formatDate(item.createdAt)}</Text>
           </View>
         )}
-        <MessageBubble message={item} isOwn={item.senderId === userId} onImagePress={setViewerImage} />
+        <MessageBubble message={item} isOwn={item.senderId === userId} onImagePress={setViewerImage} onRespondOffer={handleRespondOffer} />
       </>
     );
   };
@@ -419,6 +477,9 @@ export const ChatRoomScreen = () => {
               <TouchableOpacity style={styles.attachBtn} onPress={handleCamera}>
                 <Text style={styles.attachIcon}>📷</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.attachBtn} onPress={() => setOfferModalVisible(true)}>
+                <Text style={styles.attachIcon}>💰</Text>
+              </TouchableOpacity>
               <TextInput
                 style={styles.input}
                 value={input}
@@ -456,6 +517,40 @@ export const ChatRoomScreen = () => {
         uri={viewerImage}
         onClose={() => setViewerImage(null)}
       />
+
+      {/* Offer Modal */}
+      <Modal visible={offerModalVisible} transparent animationType="fade" onRequestClose={() => setOfferModalVisible(false)}>
+        <View style={styles.offerModalOverlay}>
+          <View style={styles.offerModalCard}>
+            <Text style={styles.offerModalTitle}>Make a Price Offer</Text>
+            <Text style={styles.offerModalSub}>Suggest a price for this item</Text>
+            <View style={styles.offerInputRow}>
+              <Text style={styles.offerInputPrefix}>₹</Text>
+              <TextInput
+                style={styles.offerInput}
+                value={offerAmount}
+                onChangeText={setOfferAmount}
+                keyboardType="numeric"
+                placeholder="Amount"
+                placeholderTextColor={Colors.textDim}
+                autoFocus
+              />
+            </View>
+            <View style={styles.offerModalBtns}>
+              <TouchableOpacity style={styles.offerModalCancel} onPress={() => setOfferModalVisible(false)}>
+                <Text style={styles.offerModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.offerModalSend, !offerAmount && { opacity: 0.5 }]}
+                onPress={handleSendOffer}
+                disabled={!offerAmount}
+              >
+                <Text style={styles.offerModalSendText}>Send Offer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -557,4 +652,31 @@ const styles = StyleSheet.create({
     padding: 14, alignItems: 'center',
   },
   pendingInputText: { color: Colors.textMuted, fontSize: 13, textAlign: 'center' },
+  offerCard: {
+    minWidth: 180, maxWidth: '75%', backgroundColor: Colors.card, borderRadius: 16,
+    borderWidth: 1.5, padding: 14, alignItems: 'center', marginVertical: 4,
+  },
+  offerLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
+  offerAmount: { fontSize: 26, fontWeight: '900', color: Colors.text, marginTop: 4, marginBottom: 10 },
+  offerBtnRow: { flexDirection: 'row', gap: 8, width: '100%' },
+  offerBtn: { flex: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1 },
+  offerAccept: { backgroundColor: Colors.success + '18', borderColor: Colors.success + '44' },
+  offerReject: { backgroundColor: Colors.danger + '18', borderColor: Colors.danger + '44' },
+  offerBtnTextAccept: { color: Colors.success, fontWeight: '700', fontSize: 12 },
+  offerBtnTextReject: { color: Colors.danger, fontWeight: '700', fontSize: 12 },
+  offerStatusBadge: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 6 },
+  offerStatusText: { fontWeight: '700', fontSize: 12 },
+  offerTime: { fontSize: 10, color: Colors.textDim, marginTop: 8 },
+  offerModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  offerModalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '85%', borderWidth: 1, borderColor: Colors.border },
+  offerModalTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  offerModalSub: { fontSize: 13, color: Colors.textMuted, marginBottom: 16 },
+  offerInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, marginBottom: 16 },
+  offerInputPrefix: { fontSize: 18, fontWeight: '800', color: Colors.accent, marginRight: 6 },
+  offerInput: { flex: 1, color: Colors.text, fontSize: 18, fontWeight: '700', paddingVertical: 12 },
+  offerModalBtns: { flexDirection: 'row', gap: 12 },
+  offerModalCancel: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  offerModalCancelText: { color: Colors.text, fontWeight: '700' },
+  offerModalSend: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  offerModalSendText: { color: '#fff', fontWeight: '800' },
 });
