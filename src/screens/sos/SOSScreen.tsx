@@ -5,6 +5,7 @@ import {
   TextInput, Modal, ActivityIndicator,
 } from 'react-native';
 import * as Location from 'expo-location';
+import * as SMS from 'expo-sms';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../theme/colors';
 
@@ -306,6 +307,7 @@ export const SOSScreen = () => {
 
   const sendSOS = async () => {
     Vibration.vibrate([0, 500, 200, 500, 200, 500]);
+    let backendSucceeded = false;
     try {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/sos`, {
@@ -321,6 +323,7 @@ export const SOSScreen = () => {
       });
       const data = await response.json();
       if (response.ok) {
+        backendSucceeded = true;
         const newAlert: SOSAlert = {
           id: data.id,
           type: alertType,
@@ -336,6 +339,32 @@ export const SOSScreen = () => {
       }
     } catch (e) {
       console.error('SOS send error:', e);
+    }
+
+    // SMS fallback — offer if backend failed (likely no internet)
+    if (!backendSucceeded) {
+      await sendSMSFallback();
+    }
+  };
+
+  const sendSMSFallback = async () => {
+    try {
+      const isAvailable = await SMS.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('SOS Failed', 'Could not send alert online and SMS is not available on this device.');
+        return;
+      }
+      const mapsLink = coords
+        ? `https://maps.google.com/?q=${coords.latitude},${coords.longitude}`
+        : '';
+      const message = `🚨 SOS: ${alertType}\nLocation: ${location ?? 'Unknown'}\n${mapsLink}\nThis is an automated emergency alert from CampusConnect.`;
+      const recipients = contacts
+        .filter(c => /^\d{3,}$/.test(c.number.replace(/[-\s]/g, '')))
+        .map(c => c.number.replace(/[-\s]/g, ''));
+
+      await SMS.sendSMSAsync(recipients, message);
+    } catch (e) {
+      console.error('SMS fallback error:', e);
     }
   };
 
@@ -419,6 +448,12 @@ export const SOSScreen = () => {
         )}
 
         <View style={styles.section}>
+          <TouchableOpacity style={styles.smsBtn} onPress={sendSMSFallback}>
+            <Text style={styles.smsBtnText}>📩 Send SOS via SMS (works without internet)</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Contacts</Text>
           <Text style={styles.editHintGlobal}>💡 Long press any contact to edit the number</Text>
           <View style={styles.contactsGrid}>
@@ -497,6 +532,8 @@ const styles = StyleSheet.create({
   activeAlert: { marginHorizontal: 16, marginBottom: 14, backgroundColor: Colors.danger + '18', borderRadius: 12, borderWidth: 1, borderColor: Colors.danger + '44', padding: 12 },
   activeAlertText: { color: Colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
   section: { paddingHorizontal: 16, marginBottom: 20 },
+  smsBtn: { backgroundColor: Colors.warn + '15', borderRadius: 14, borderWidth: 1, borderColor: Colors.warn + '44', paddingVertical: 14, alignItems: 'center' },
+  smsBtnText: { color: Colors.warn, fontWeight: '700', fontSize: 13, textAlign: 'center', paddingHorizontal: 10 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 4 },
   editHintGlobal: { fontSize: 11, color: Colors.textDim, marginBottom: 12 },
