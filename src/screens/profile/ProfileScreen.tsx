@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../theme/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
@@ -436,11 +437,11 @@ useEffect(() => {
             {profilePic ? (
               <Image source={{ uri: profilePic }} style={styles.avatarImage} />
             ) : (
-              <View style={styles.avatar}>
+              <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.avatar}>
                 <Text style={styles.avatarText}>
                   {profile.anonymousHandle.slice(0, 2).toUpperCase()}
                 </Text>
-              </View>
+              </LinearGradient>
             )}
             <View style={styles.avatarEditBadge}>
               <Text style={{ fontSize: 10 }}>📷</Text>
@@ -610,7 +611,7 @@ const styles = StyleSheet.create({
   bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   avatarWrap: { position: 'relative' },
   avatarImage: { width: 68, height: 68, borderRadius: 34 },
-  avatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 68, height: 68, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 24, fontWeight: '900', color: '#fff' },
   avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: Colors.card, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
   profileInfo: { flex: 1, justifyContent: 'center', gap: 3 },
@@ -624,7 +625,7 @@ const styles = StyleSheet.create({
   college: { fontSize: 13, color: Colors.accent, fontWeight: '700' },
   dept: { fontSize: 12, color: Colors.textMuted },
   joined: { fontSize: 11, color: Colors.textDim },
-  trustCard: { flexDirection: 'row', gap: 16, alignItems: 'center', margin: 16, padding: 16, backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border },
+  trustCard: { flexDirection: 'row', gap: 16, alignItems: 'center', margin: 16, padding: 18, backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
   trustInfo: { flex: 1 },
   trustTitle: { fontWeight: '800', fontSize: 15, color: Colors.text, marginBottom: 4 },
   trustDesc: { fontSize: 11, color: Colors.textMuted, lineHeight: 16, marginBottom: 10 },

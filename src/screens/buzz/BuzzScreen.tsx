@@ -7,6 +7,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../theme/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
@@ -264,7 +265,9 @@ const PostCard = ({
   return (
     <View style={ps.card}>
       <View style={ps.cardHeader}>
-        <View style={ps.authorAvatar}><Text style={{ fontSize: 14 }}>👤</Text></View>
+       <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={ps.authorAvatar}>
+          <Text style={ps.authorAvatarText}>{post.author.slice(0, 2).toUpperCase()}</Text>
+        </LinearGradient>
         <View style={ps.authorMeta}>
           <Text style={ps.authorName}>{post.author}</Text>
           <Text style={ps.postTime}>{timeAgo(post.createdAt)}</Text>
@@ -349,7 +352,8 @@ const PostCard = ({
 const ps = StyleSheet.create({
   card: { backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, marginHorizontal: 14, marginBottom: 12, overflow: 'hidden' },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 14, paddingBottom: 10 },
-  authorAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+authorAvatar: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  authorAvatarText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   authorMeta: { flex: 1 },
   authorName: { fontWeight: '700', fontSize: 13, color: Colors.accent },
   postTime: { fontSize: 10, color: Colors.textDim, marginTop: 1 },
