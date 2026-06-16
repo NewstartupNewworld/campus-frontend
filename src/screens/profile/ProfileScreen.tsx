@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeProvider';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
@@ -215,8 +216,8 @@ const lr = StyleSheet.create({
 });
 
 const SettingsSection = ({ onLogout, onCollegeAccess }: { onLogout: () => void; onCollegeAccess: () => void }) => {
+  const { isDark, toggleTheme } = useTheme();
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
   const [anonymousMode, setAnonymousMode] = useState(true);
 
   const Row = ({ label, value, onToggle }: { label: string; value: boolean; onToggle: (v: boolean) => void }) => (
@@ -232,7 +233,7 @@ const SettingsSection = ({ onLogout, onCollegeAccess }: { onLogout: () => void; 
       <View style={ss.card}>
         <Row label="Push Notifications" value={notifications} onToggle={setNotifications} />
         <View style={ss.divider} />
-        <Row label="Dark Mode" value={darkMode} onToggle={setDarkMode} />
+        <Row label="Dark Mode" value={isDark} onToggle={toggleTheme} />
         <View style={ss.divider} />
         <Row label="Anonymous Mode on Buzz" value={anonymousMode} onToggle={setAnonymousMode} />
       </View>

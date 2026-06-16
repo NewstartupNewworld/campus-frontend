@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { registerForPushNotifications } from './src/utils/notifications';
 import * as Notifications from 'expo-notifications';
+import { ThemeProvider } from './src/theme/ThemeProvider';
 
 export default function App() {
   useEffect(() => {
@@ -18,5 +19,9 @@ export default function App() {
     return () => subscription.remove();
   }, []);
 
-  return <RootNavigator />;
+  return (
+    <ThemeProvider>
+      <RootNavigator />
+    </ThemeProvider>
+  );
 }

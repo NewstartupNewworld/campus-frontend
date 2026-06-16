@@ -1,4 +1,4 @@
-export const Colors = {
+const DARK = {
   bg: '#0B0D12',
   card: '#15171F',
   cardAlt: '#1B1E29',
@@ -13,6 +13,33 @@ export const Colors = {
   textDim: '#5C6178',
   border: '#23262F',
   borderStrong: '#33384A',
+};
+
+const LIGHT = {
+  bg: '#F5F6FA',
+  card: '#FFFFFF',
+  cardAlt: '#F0F1F6',
+  accent: '#4F7EE0',
+  accentAlt: '#7B63E8',
+  accentDim: '#D6E0F7',
+  success: '#2BAE66',
+  warn: '#E08F1F',
+  danger: '#E4504F',
+  text: '#15171F',
+  textMuted: '#5C6178',
+  textDim: '#9398AB',
+  border: '#E2E4ED',
+  borderStrong: '#CBCFDD',
+};
+
+// Mutable object — screens import `Colors` once and read properties off it.
+// ThemeProvider mutates these properties in place when toggled, then forces
+// a full app remount via a `key` so every screen re-renders with new values.
+export const Colors: typeof DARK = { ...DARK };
+
+export const applyTheme = (isDark: boolean) => {
+  const palette = isDark ? DARK : LIGHT;
+  Object.assign(Colors, palette);
 };
 
 export const Typography = {
