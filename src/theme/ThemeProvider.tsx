@@ -1,24 +1,24 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { applyTheme } from './colors';
+import { applyTheme, Colors } from './colors';
 
 interface ThemeContextValue {
   isDark: boolean;
   toggleTheme: () => void;
-  themeKey: number;
+  colors: typeof Colors;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   isDark: true,
   toggleTheme: () => {},
-  themeKey: 0,
+  colors: { ...Colors },
 });
 
 const THEME_STORAGE_KEY = 'appThemeIsDark';
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [isDark, setIsDark] = useState(true);
-  const [themeKey, setThemeKey] = useState(0);
+  const [colors, setColors] = useState({ ...Colors });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -28,8 +28,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         const darkMode = saved === null ? true : saved === 'true';
         applyTheme(darkMode);
         setIsDark(darkMode);
+        setColors({ ...Colors });
       } catch (e) {
         applyTheme(true);
+        setColors({ ...Colors });
       } finally {
         setReady(true);
       }
@@ -41,21 +43,18 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     const next = !isDark;
     applyTheme(next);
     setIsDark(next);
-    setThemeKey(k => k + 1);
+    setColors({ ...Colors });
     AsyncStorage.setItem(THEME_STORAGE_KEY, String(next));
   };
 
   if (!ready) return null;
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme, themeKey }}>
-      {/* key forces a full remount of children when theme toggles,
-          so every screen re-reads the freshly-mutated Colors object */}
-      <React.Fragment key={themeKey}>
-        {children}
-      </React.Fragment>
+    <ThemeContext.Provider value={{ isDark, toggleTheme, colors }}>
+      {children}
     </ThemeContext.Provider>
   );
 };
 
 export const useTheme = () => useContext(ThemeContext);
+export const useColors = () => useContext(ThemeContext).colors;

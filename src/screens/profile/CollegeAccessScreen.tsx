@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, FlatList, ActivityIndicator, Alert, ScrollView,
+  SafeAreaView, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../../theme/colors';
+import { useColors } from '../../theme/ThemeProvider';
 
 const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
@@ -19,6 +19,7 @@ interface AccessRequest {
 }
 
 export const CollegeAccessScreen = () => {
+  const Colors = useColors();
   const navigation = useNavigation();
   const [targetCollege, setTargetCollege] = useState('');
   const [reason, setReason] = useState('');
@@ -26,6 +27,41 @@ export const CollegeAccessScreen = () => {
   const [myRequests, setMyRequests] = useState<AccessRequest[]>([]);
   const [incoming, setIncoming] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors.bg },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+    backBtn: { padding: 4 },
+    backText: { color: Colors.text, fontSize: 22 },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.text },
+    scroll: { padding: 16, paddingBottom: 40 },
+    card: { backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 20 },
+    cardTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 6 },
+    cardSub: { fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginBottom: 16 },
+    label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8, marginTop: 4 },
+    input: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12, color: Colors.text, fontSize: 14, marginBottom: 14 },
+    multiline: { height: 80 },
+    submitBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+    submitText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    section: { marginBottom: 20 },
+    sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 12 },
+    empty: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingVertical: 20 },
+    requestCard: { backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, marginBottom: 10 },
+    requestHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+    requestCollege: { fontSize: 14, fontWeight: '700', color: Colors.text },
+    requestFrom: { fontSize: 11, color: Colors.textMuted },
+    statusBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+    statusText: { fontSize: 11, fontWeight: '700' },
+    requestReason: { fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginBottom: 8 },
+    reviewBtns: { flexDirection: 'row', gap: 10, marginTop: 6 },
+    approveBtn: { flex: 1, backgroundColor: Colors.success + '18', borderWidth: 1, borderColor: Colors.success + '44', borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
+    approveText: { color: Colors.success, fontWeight: '700', fontSize: 13 },
+    rejectBtn: { flex: 1, backgroundColor: Colors.danger + '18', borderWidth: 1, borderColor: Colors.danger + '44', borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
+    rejectText: { color: Colors.danger, fontWeight: '700', fontSize: 13 },
+  });
+
+  const statusColor = (status: string) =>
+    status === 'approved' ? Colors.success : status === 'rejected' ? Colors.danger : Colors.warn;
 
   const loadData = async () => {
     try {
@@ -45,9 +81,7 @@ export const CollegeAccessScreen = () => {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const handleSubmit = async () => {
     if (!targetCollege.trim()) {
@@ -91,9 +125,6 @@ export const CollegeAccessScreen = () => {
     }
   };
 
-  const statusColor = (status: string) =>
-    status === 'approved' ? Colors.success : status === 'rejected' ? Colors.danger : Colors.warn;
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -113,14 +144,11 @@ export const CollegeAccessScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* Request form */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>🏫 Request Access</Text>
           <Text style={styles.cardSub}>
             Want to view or join another college's Buzz, Marketplace, or Groups? Send a request — students from that college will review it.
           </Text>
-
           <Text style={styles.label}>College Name</Text>
           <TextInput
             style={styles.input}
@@ -129,7 +157,6 @@ export const CollegeAccessScreen = () => {
             placeholder="e.g. NIT Goa"
             placeholderTextColor={Colors.textDim}
           />
-
           <Text style={styles.label}>Reason (optional)</Text>
           <TextInput
             style={[styles.input, styles.multiline]}
@@ -141,20 +168,11 @@ export const CollegeAccessScreen = () => {
             numberOfLines={3}
             textAlignVertical="top"
           />
-
-          <TouchableOpacity
-            style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
-            onPress={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.submitText}>Send Request</Text>
-            }
+          <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={submitting}>
+            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Send Request</Text>}
           </TouchableOpacity>
         </View>
 
-        {/* My requests */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>My Requests</Text>
           {myRequests.length === 0 ? (
@@ -176,7 +194,6 @@ export const CollegeAccessScreen = () => {
           )}
         </View>
 
-        {/* Incoming requests to review */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Requests to Your College</Text>
           {incoming.length === 0 ? (
@@ -201,44 +218,7 @@ export const CollegeAccessScreen = () => {
             ))
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn: { padding: 4 },
-  backText: { color: Colors.text, fontSize: 22 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  scroll: { padding: 16, paddingBottom: 40 },
-  card: { backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 20 },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 6 },
-  cardSub: { fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginBottom: 16 },
-  label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8, marginTop: 4 },
-  input: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12, color: Colors.text, fontSize: 14, marginBottom: 14 },
-  multiline: { height: 80 },
-  submitBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  submitText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 12 },
-  empty: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingVertical: 20 },
-  requestCard: { backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, marginBottom: 10 },
-  requestHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  requestCollege: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  requestFrom: { fontSize: 11, color: Colors.textMuted },
-  statusBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  requestReason: { fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginBottom: 8 },
-  reviewBtns: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  approveBtn: { flex: 1, backgroundColor: Colors.success + '18', borderWidth: 1, borderColor: Colors.success + '44', borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
-  approveText: { color: Colors.success, fontWeight: '700', fontSize: 13 },
-  rejectBtn: { flex: 1, backgroundColor: Colors.danger + '18', borderWidth: 1, borderColor: Colors.danger + '44', borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
-  rejectText: { color: Colors.danger, fontWeight: '700', fontSize: 13 },
-});

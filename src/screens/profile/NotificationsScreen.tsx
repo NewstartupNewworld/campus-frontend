@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../../theme/colors';
+import { useColors } from '../../theme/ThemeProvider';
 
 const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
@@ -38,10 +38,33 @@ const NOTIF_ICONS: Record<string, string> = {
 };
 
 export const NotificationsScreen = () => {
+  const Colors = useColors();
   const navigation = useNavigation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors.bg },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+    backBtn: { padding: 4 },
+    backText: { color: Colors.text, fontSize: 22 },
+    headerTitle: { flex: 1, fontWeight: '800', fontSize: 17, color: Colors.text },
+    markAllRead: { fontSize: 12, fontWeight: '700', color: Colors.accent },
+    list: { padding: 14 },
+    notifCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 14, marginBottom: 10 },
+    notifCardUnread: { borderColor: Colors.accent + '55', backgroundColor: Colors.accent + '0A' },
+    notifIcon: { fontSize: 24 },
+    notifBody: { flex: 1 },
+    notifTitle: { fontWeight: '700', fontSize: 14, color: Colors.text },
+    notifText: { fontSize: 13, color: Colors.textMuted, marginTop: 2, lineHeight: 18 },
+    notifTime: { fontSize: 11, color: Colors.textDim, marginTop: 6 },
+    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, marginTop: 4 },
+    emptyWrap: { alignItems: 'center', marginTop: 80 },
+    emptyIcon: { fontSize: 40, marginBottom: 12 },
+    emptyText: { fontSize: 16, fontWeight: '700', color: Colors.text },
+    emptySub: { fontSize: 13, color: Colors.textMuted, marginTop: 4, textAlign: 'center', paddingHorizontal: 30 },
+  });
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -50,9 +73,7 @@ export const NotificationsScreen = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      if (response.ok) {
-        setNotifications(data.notifications || []);
-      }
+      if (response.ok) setNotifications(data.notifications || []);
     } catch (e) {
       console.error('Fetch notifications error:', e);
     } finally {
@@ -146,33 +167,3 @@ export const NotificationsScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  backBtn: { padding: 4 },
-  backText: { color: Colors.text, fontSize: 22 },
-  headerTitle: { flex: 1, fontWeight: '800', fontSize: 17, color: Colors.text },
-  markAllRead: { fontSize: 12, fontWeight: '700', color: Colors.accent },
-  list: { padding: 14 },
-  notifCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1,
-    borderColor: Colors.border, padding: 14, marginBottom: 10,
-  },
-  notifCardUnread: { borderColor: Colors.accent + '55', backgroundColor: Colors.accent + '0A' },
-  notifIcon: { fontSize: 24 },
-  notifBody: { flex: 1 },
-  notifTitle: { fontWeight: '700', fontSize: 14, color: Colors.text },
-  notifText: { fontSize: 13, color: Colors.textMuted, marginTop: 2, lineHeight: 18 },
-  notifTime: { fontSize: 11, color: Colors.textDim, marginTop: 6 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, marginTop: 4 },
-  emptyWrap: { alignItems: 'center', marginTop: 80 },
-  emptyIcon: { fontSize: 40, marginBottom: 12 },
-  emptyText: { fontSize: 16, fontWeight: '700', color: Colors.text },
-  emptySub: { fontSize: 13, color: Colors.textMuted, marginTop: 4, textAlign: 'center', paddingHorizontal: 30 },
-});
