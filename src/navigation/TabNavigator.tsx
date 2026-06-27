@@ -1,8 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text } from 'react-native';
-import { Colors } from '../theme/colors';
+import { Text, View } from 'react-native';
+import { useColors } from '../theme/ThemeProvider';
 import { MarketplaceScreen } from '../screens/marketplace/MarketplaceScreen';
 import { ListingDetailScreen } from '../screens/marketplace/ListingDetailScreen';
 import { CreateListingScreen } from '../screens/marketplace/CreateListingScreen';
@@ -61,35 +61,54 @@ function BuzzStackScreen() {
 }
 
 export function TabNavigator() {
+  const Colors = useColors();
+
+  const TAB_ICONS: Record<string, { icon: string; label: string }> = {
+    Marketplace: { icon: '🛍️', label: 'Market' },
+    Buzz: { icon: '⚡', label: 'Buzz' },
+    Chats: { icon: '💬', label: 'Chats' },
+    SOS: { icon: '🚨', label: 'SOS' },
+    Profile: { icon: '👤', label: 'Profile' },
+  };
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-        backgroundColor: Colors.card,
-        borderTopColor: Colors.border,
-        borderTopWidth: 1,
-        height: 90,
-        paddingBottom: 28,
-        paddingTop: 6,
+          backgroundColor: Colors.card,
+          borderTopColor: Colors.border,
+          borderTopWidth: 1,
+          height: 90,
+          paddingBottom: 28,
+          paddingTop: 6,
         },
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textDim,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
-        tabBarIcon: ({ focused }) => {
-          const icons: Record<string, string> = {
-            Marketplace: '🛍️',
-            Buzz: '⚡',
-            Chats: '💬',
-            SOS: '🚨',
-            Profile: '👤',
-          };
-          return (
-            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.35 }}>
-              {icons[route.name] ?? '●'}
+        tabBarLabel: ({ focused }) => (
+          <Text style={{
+            fontSize: 10,
+            fontWeight: '700',
+            color: focused ? Colors.accent : Colors.textDim,
+            marginTop: 2,
+          }}>
+            {TAB_ICONS[route.name]?.label ?? route.name}
+          </Text>
+        ),
+        tabBarIcon: ({ focused }) => (
+          <View style={{
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 44,
+            height: 32,
+            borderRadius: 12,
+            backgroundColor: focused ? Colors.accent + '20' : 'transparent',
+          }}>
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.4 }}>
+              {TAB_ICONS[route.name]?.icon ?? '●'}
             </Text>
-          );
-        },
+          </View>
+        ),
       })}
     >
       <Tab.Screen name="Marketplace" component={MarketplaceStack} />
