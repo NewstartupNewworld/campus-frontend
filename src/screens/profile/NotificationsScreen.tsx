@@ -10,14 +10,14 @@ import { useColors } from '../../theme/ThemeProvider';
 const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
 interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  data: any;
-  read: boolean;
-  created_at: string;
+  id: string; type: string; title: string;
+  body: string; data: any; read: boolean; created_at: string;
 }
+
+const softShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+};
 
 const timeAgo = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime();
@@ -30,11 +30,13 @@ const timeAgo = (iso: string) => {
 };
 
 const NOTIF_ICONS: Record<string, string> = {
-  chat_accepted: '🎉',
-  new_rating: '⭐',
-  new_message: '💬',
-  cross_college: '🏫',
-  default: '🔔',
+  chat_accepted: '🎉', new_rating: '⭐',
+  new_message: '💬', cross_college: '🏫', default: '🔔',
+};
+
+const NOTIF_COLORS: Record<string, string> = {
+  chat_accepted: '#22C55E', new_rating: '#F97316',
+  new_message: '#4F7CFF', cross_college: '#7C5CFF', default: '#94A3B8',
 };
 
 export const NotificationsScreen = () => {
@@ -46,54 +48,56 @@ export const NotificationsScreen = () => {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
-    backBtn: { padding: 4 },
-    backText: { color: Colors.text, fontSize: 22 },
+
+    // Header — hairline divider, back button as pill
+    header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11 },
+    backBtn: { width: 34, height: 34, borderRadius: 11, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', ...softShadow },
+    backText: { color: Colors.text, fontSize: 18 },
     headerTitle: { flex: 1, fontWeight: '800', fontSize: 17, color: Colors.text },
     markAllRead: { fontSize: 12, fontWeight: '700', color: Colors.accent },
+    divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginBottom: 6 },
+
     list: { padding: 14 },
-    notifCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 14, marginBottom: 10 },
-    notifCardUnread: { borderColor: Colors.accent + '55', backgroundColor: Colors.accent + '0A' },
-    notifIcon: { fontSize: 24 },
+
+    // Notification card — shadow, no border; unread = accent tint bg
+    notifCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: Colors.card, borderRadius: 16, padding: 13, marginBottom: 9, ...softShadow },
+    notifCardUnread: { backgroundColor: Colors.accent + '0E' },
+
+    // Icon wrap — colored tint circle
+    notifIconWrap: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+    notifIcon: { fontSize: 20 },
+
     notifBody: { flex: 1 },
-    notifTitle: { fontWeight: '700', fontSize: 14, color: Colors.text },
-    notifText: { fontSize: 13, color: Colors.textMuted, marginTop: 2, lineHeight: 18 },
-    notifTime: { fontSize: 11, color: Colors.textDim, marginTop: 6 },
-    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, marginTop: 4 },
+    notifTitle: { fontWeight: '700', fontSize: 13.5, color: Colors.text },
+    notifText: { fontSize: 12.5, color: Colors.textMuted, marginTop: 2, lineHeight: 18 },
+    notifTime: { fontSize: 10.5, color: Colors.textDim, marginTop: 5 },
+
+    // Unread dot — accent colored
+    unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent, marginTop: 5 },
+
     emptyWrap: { alignItems: 'center', marginTop: 80 },
-    emptyIcon: { fontSize: 40, marginBottom: 12 },
-    emptyText: { fontSize: 16, fontWeight: '700', color: Colors.text },
+    emptyIcon: { fontSize: 38, marginBottom: 12 },
+    emptyText: { fontSize: 15, fontWeight: '700', color: Colors.text },
     emptySub: { fontSize: 13, color: Colors.textMuted, marginTop: 4, textAlign: 'center', paddingHorizontal: 30 },
   });
 
   const fetchNotifications = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json();
       if (response.ok) setNotifications(data.notifications || []);
-    } catch (e) {
-      console.error('Fetch notifications error:', e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    } catch (e) { console.error('Fetch notifications error:', e); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
   const handleMarkAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     try {
       const token = await AsyncStorage.getItem('token');
-      await fetch(`${API_URL}/api/notifications/read-all`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await fetch(`${API_URL}/api/notifications/read-all`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
     } catch (e) {}
   };
 
@@ -102,20 +106,12 @@ export const NotificationsScreen = () => {
       setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
       try {
         const token = await AsyncStorage.getItem('token');
-        await fetch(`${API_URL}/api/notifications/${notif.id}/read`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await fetch(`${API_URL}/api/notifications/${notif.id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
       } catch (e) {}
     }
     if (notif.type === 'chat_accepted' && notif.data?.chatId) {
       (navigation as any).navigate('ChatRoom', { chatId: notif.data.chatId, listingTitle: '' });
     }
-  };
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchNotifications();
   };
 
   return (
@@ -124,13 +120,14 @@ export const NotificationsScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>🔔 Notifications</Text>
         {notifications.some(n => !n.read) && (
           <TouchableOpacity onPress={handleMarkAllRead}>
             <Text style={styles.markAllRead}>Mark all read</Text>
           </TouchableOpacity>
         )}
       </View>
+      <View style={styles.divider} />
 
       {loading ? (
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 60 }} />
@@ -139,22 +136,27 @@ export const NotificationsScreen = () => {
           data={notifications}
           keyExtractor={n => n.id}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.accent} />}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.notifCard, !item.read && styles.notifCardUnread]}
-              onPress={() => handleNotificationPress(item)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.notifIcon}>{NOTIF_ICONS[item.type] || NOTIF_ICONS.default}</Text>
-              <View style={styles.notifBody}>
-                <Text style={styles.notifTitle}>{item.title}</Text>
-                <Text style={styles.notifText}>{item.body}</Text>
-                <Text style={styles.notifTime}>{timeAgo(item.created_at)}</Text>
-              </View>
-              {!item.read && <View style={styles.unreadDot} />}
-            </TouchableOpacity>
-          )}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} tintColor={Colors.accent} />}
+          renderItem={({ item }) => {
+            const iconColor = NOTIF_COLORS[item.type] || NOTIF_COLORS.default;
+            return (
+              <TouchableOpacity
+                style={[styles.notifCard, !item.read && styles.notifCardUnread]}
+                onPress={() => handleNotificationPress(item)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.notifIconWrap, { backgroundColor: iconColor + '20' }]}>
+                  <Text style={styles.notifIcon}>{NOTIF_ICONS[item.type] || NOTIF_ICONS.default}</Text>
+                </View>
+                <View style={styles.notifBody}>
+                  <Text style={styles.notifTitle}>{item.title}</Text>
+                  <Text style={styles.notifText}>{item.body}</Text>
+                  <Text style={styles.notifTime}>{timeAgo(item.created_at)}</Text>
+                </View>
+                {!item.read && <View style={styles.unreadDot} />}
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyIcon}>🔔</Text>

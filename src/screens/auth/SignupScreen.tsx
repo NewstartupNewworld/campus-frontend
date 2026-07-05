@@ -9,13 +9,11 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type AuthStackParamList = {
-  Login: undefined;
-  Signup: undefined;
-  Main: undefined;
+  Login: undefined; Signup: undefined; Main: undefined;
 };
-
 type VerifyMethod = 'email' | 'studentId' | 'digitalId';
 
 const COLLEGE_IMAGES: Record<string, string> = {
@@ -38,6 +36,15 @@ const getCollegeImage = (collegeName: string): string => {
   return COLLEGE_IMAGES['default'];
 };
 
+const softShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+};
+const cardShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
+};
+
 export const SignupScreen = () => {
   const Colors = useColors();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
@@ -51,7 +58,6 @@ export const SignupScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-
   const [college, setCollege] = useState('');
   const [department, setDepartment] = useState('');
   const [year, setYear] = useState('');
@@ -64,40 +70,60 @@ export const SignupScreen = () => {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
     scroll: { flexGrow: 1, padding: 20, paddingBottom: 40 },
+
+    // Header
     header: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
-    backText: { color: Colors.text, fontSize: 24 },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
-    headerSub: { fontSize: 12, color: Colors.textMuted },
-    progressBg: { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 24 },
+    backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', ...softShadow },
+    backText: { color: Colors.text, fontSize: 18 },
+    headerTitle: { fontSize: 19, fontWeight: '800', color: Colors.text },
+    headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
+
+    // Progress bar
+    progressBg: { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 22 },
     progressFill: { height: '100%', backgroundColor: Colors.accent, borderRadius: 2 },
-    card: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, padding: 20, marginBottom: 16 },
-    stepTitle: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 4 },
-    stepSub: { fontSize: 13, color: Colors.textMuted, marginBottom: 20, lineHeight: 20 },
-    methodCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, marginBottom: 10 },
-    methodCardActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '0F' },
-    methodIcon: { fontSize: 24 },
+
+    // Card — shadow, no border
+    card: { backgroundColor: Colors.card, borderRadius: 20, padding: 20, marginBottom: 16, ...cardShadow },
+    stepTitle: { fontSize: 19, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+    stepSub: { fontSize: 12.5, color: Colors.textMuted, marginBottom: 18, lineHeight: 19 },
+
+    // Verify method cards — shadow, active = accent tint
+    methodCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bg, borderRadius: 14, padding: 13, marginBottom: 9 },
+    methodCardActive: { backgroundColor: Colors.accent + '12' },
+    methodIcon: { fontSize: 22 },
     methodText: { flex: 1 },
-    methodTitle: { fontWeight: '700', fontSize: 14, color: Colors.text },
-    methodSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-    methodRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+    methodTitle: { fontWeight: '700', fontSize: 13.5, color: Colors.text },
+    methodSub: { fontSize: 11.5, color: Colors.textMuted, marginTop: 2 },
+    methodRadio: { width: 19, height: 19, borderRadius: 10, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
     methodRadioActive: { borderColor: Colors.accent },
-    methodRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent },
-    divider: { height: 1, backgroundColor: Colors.border, marginVertical: 16 },
-    label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8, marginTop: 4 },
-    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, marginBottom: 14 },
-    inputIcon: { fontSize: 16, marginRight: 8 },
-    input: { flex: 1, color: Colors.text, fontSize: 14, paddingVertical: 12 },
-    collegePreview: { width: '100%', height: 140, borderRadius: 12, overflow: 'hidden', marginBottom: 16 },
-    collegePreviewImage: { borderRadius: 12 },
-    collegePreviewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end', padding: 14, borderRadius: 12 },
-    collegePreviewText: { fontSize: 18, fontWeight: '900', color: '#fff' },
-    collegePreviewSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-    anonCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: Colors.accent + '12', borderRadius: 12, borderWidth: 1, borderColor: Colors.accent + '33', padding: 14, marginBottom: 20 },
-    anonTitle: { fontWeight: '700', fontSize: 13, color: Colors.text, marginBottom: 4 },
-    anonSub: { fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
-    nextBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-    nextBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-    loginLink: { alignItems: 'center', marginTop: 8 },
+    methodRadioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.accent },
+
+    divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginVertical: 14 },
+    label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 7, marginTop: 4 },
+
+    // Inputs — bg fill, shadow, no border
+    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 13, paddingHorizontal: 12, marginBottom: 12, ...softShadow },
+    inputIcon: { fontSize: 15, marginRight: 8 },
+    input: { flex: 1, color: Colors.text, fontSize: 13.5, paddingVertical: 12 },
+
+    // College image preview
+    collegePreview: { width: '100%', height: 130, borderRadius: 14, overflow: 'hidden', marginBottom: 14 },
+    collegePreviewImage: { borderRadius: 14 },
+    collegePreviewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end', padding: 14, borderRadius: 14 },
+    collegePreviewText: { fontSize: 17, fontWeight: '900', color: '#fff' },
+    collegePreviewSub: { fontSize: 11.5, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+
+    // Anon info card — accent tint, shadow
+    anonCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: Colors.accent + '12', borderRadius: 14, padding: 14, marginBottom: 18, ...softShadow },
+    anonTitle: { fontWeight: '700', fontSize: 13, color: Colors.text, marginBottom: 3 },
+    anonSub: { fontSize: 11.5, color: Colors.textMuted, lineHeight: 17 },
+
+    // CTA button — gradient
+    nextBtn: { borderRadius: 14, overflow: 'hidden', ...softShadow },
+    nextBtnGradient: { paddingVertical: 15, alignItems: 'center' },
+    nextBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+
+    loginLink: { alignItems: 'center', marginTop: 10 },
     loginLinkText: { color: Colors.textMuted, fontSize: 13 },
   });
 
@@ -148,17 +174,16 @@ export const SignupScreen = () => {
       navigation.navigate('Main' as never);
     } catch (err: any) {
       Alert.alert('Signup failed', err.message || 'Something went wrong. Try again.');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => step === 1 ? navigation.goBack() : setStep(1)}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => step === 1 ? navigation.goBack() : setStep(1)}>
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
             <View>
@@ -220,8 +245,11 @@ export const SignupScreen = () => {
                 <Text style={styles.inputIcon}>🔒</Text>
                 <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repeat your password" placeholderTextColor={Colors.textDim} secureTextEntry />
               </View>
-              <TouchableOpacity style={styles.nextBtn} onPress={handleStep1}>
-                <Text style={styles.nextBtnText}>Continue →</Text>
+
+              <TouchableOpacity style={styles.nextBtn} onPress={handleStep1} activeOpacity={0.85}>
+                <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.nextBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <Text style={styles.nextBtnText}>Continue →</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
@@ -273,15 +301,17 @@ export const SignupScreen = () => {
               </View>
 
               <View style={styles.anonCard}>
-                <Text style={{ fontSize: 24 }}>🎭</Text>
+                <Text style={{ fontSize: 22 }}>🎭</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.anonTitle}>You'll appear as CampusOwl#42</Text>
                   <Text style={styles.anonSub}>Random anonymous handle. Your real name is never shown publicly.</Text>
                 </View>
               </View>
 
-              <TouchableOpacity style={[styles.nextBtn, loading && { opacity: 0.7 }]} onPress={handleSignup} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>🚀 Create Account</Text>}
+              <TouchableOpacity style={[styles.nextBtn, loading && { opacity: 0.7 }]} onPress={handleSignup} disabled={loading} activeOpacity={0.85}>
+                <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.nextBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>🚀 Create Account</Text>}
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
@@ -291,6 +321,7 @@ export const SignupScreen = () => {
               Already have an account? <Text style={{ color: Colors.accent }}>Sign In</Text>
             </Text>
           </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -31,6 +31,21 @@ const DEFAULT_REACTIONS = [
 ];
 const STORY_COLORS = ['#FF6B6B', '#4F8CFF', '#FFB347', '#3DDC84', '#C97BFF', '#00C9FF'];
 
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.18,
+  shadowRadius: 10,
+  elevation: 4,
+};
+const softShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12,
+  shadowRadius: 5,
+  elevation: 2,
+};
+
 const timeAgo = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -62,13 +77,13 @@ const iv = StyleSheet.create({
 const StoriesRow = ({ posts }: { posts: BuzzPost[] }) => {
   const Colors = useColors();
   const sr = StyleSheet.create({
-    container: { borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.card },
-    row: { paddingHorizontal: 12, paddingVertical: 10, gap: 12 },
+    container: { backgroundColor: Colors.bg, paddingBottom: 4 },
+    row: { paddingHorizontal: 14, paddingVertical: 8, gap: 14 },
     storyWrap: { alignItems: 'center', gap: 4 },
-    ring: { width: 58, height: 58, borderRadius: 29, borderWidth: 2, padding: 2 },
-    avatar: { flex: 1, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
-    initials: { fontSize: 16, fontWeight: '800' },
-    name: { fontSize: 10, color: Colors.textMuted, width: 58, textAlign: 'center' },
+    ring: { width: 52, height: 52, borderRadius: 26, borderWidth: 2, padding: 2 },
+    avatar: { flex: 1, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    initials: { fontSize: 14, fontWeight: '800' },
+    name: { fontSize: 10, color: Colors.textMuted, width: 52, textAlign: 'center' },
   });
   const uniqueAuthors = Array.from(new Set(posts.map(p => p.author))).slice(0, 8);
   if (uniqueAuthors.length === 0) return null;
@@ -105,20 +120,20 @@ const CommentSheet = ({ post, visible, onClose, onAddComment }: { post: BuzzPost
     overlay: { flex: 1, justifyContent: 'flex-end' },
     backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
     kavContainer: { width: '100%' },
-    sheet: { backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 30, maxHeight: '85%', borderWidth: 1, borderBottomWidth: 0, borderColor: Colors.border },
+    sheet: { backgroundColor: Colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 16, paddingBottom: 30, maxHeight: '85%', ...cardShadow },
     handle: { width: 36, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginVertical: 12 },
     sheetTitle: { fontWeight: '800', fontSize: 16, color: Colors.text, marginBottom: 12 },
     commentList: { flexGrow: 0, maxHeight: 320 },
     emptyComments: { color: Colors.textMuted, textAlign: 'center', paddingVertical: 24, fontSize: 13 },
     commentRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-    commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
+    commentAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
     commentBody: { flex: 1 },
     commentAuthor: { fontWeight: '700', fontSize: 12, color: Colors.accent, marginBottom: 2 },
     commentText: { fontSize: 13, color: Colors.text, lineHeight: 18 },
     commentTime: { fontSize: 10, color: Colors.textDim, marginTop: 3 },
-    inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 12, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 12 },
-    input: { flex: 1, backgroundColor: Colors.bg, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 9, color: Colors.text, fontSize: 13, maxHeight: 80 },
-    sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+    inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 12, paddingTop: 12 },
+    input: { flex: 1, backgroundColor: Colors.bg, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9, color: Colors.text, fontSize: 13, maxHeight: 80 },
+    sendBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
     sendBtnOff: { backgroundColor: Colors.accentDim },
     sendIcon: { color: '#fff', fontSize: 15 },
   });
@@ -164,36 +179,37 @@ const CommentSheet = ({ post, visible, onClose, onAddComment }: { post: BuzzPost
 const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave }: { post: BuzzPost; onReact: (postId: string, emoji: string) => void; onComment: (post: BuzzPost) => void; onDelete: (postId: string) => void; onImagePress: (uri: string) => void; onSave: (postId: string) => void }) => {
   const Colors = useColors();
   const ps = StyleSheet.create({
-    card: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, marginHorizontal: 14, marginBottom: 12, overflow: 'hidden' },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 14, paddingBottom: 10 },
-    authorAvatar: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    authorAvatarText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+    card: { backgroundColor: Colors.card, borderRadius: 18, marginHorizontal: 14, marginBottom: 10, overflow: 'hidden', ...softShadow },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 },
+    authorAvatar: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    authorAvatarText: { fontSize: 11, fontWeight: '700', color: '#fff' },
     authorMeta: { flex: 1 },
-    authorName: { fontWeight: '700', fontSize: 13, color: Colors.accent },
-    postTime: { fontSize: 10, color: Colors.textDim, marginTop: 1 },
-    categoryBadge: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
-    categoryText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-    trendingBadge: { backgroundColor: Colors.warn + '22', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-    trendingText: { fontSize: 10, fontWeight: '700', color: Colors.warn },
-    content: { fontSize: 14, color: Colors.text, lineHeight: 22, paddingHorizontal: 14, paddingBottom: 12 },
-    image: { width: '100%', height: 200 },
-    reactionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.border, flexWrap: 'wrap' },
-    reactionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, paddingVertical: 5 },
-    reactionBtnActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '18' },
-    reactionEmoji: { fontSize: 14 },
-    reactionCount: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
-    commentBtn: { marginLeft: 'auto', backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 5 },
-    commentBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
-    saveBtn: { backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, paddingVertical: 5 },
+    authorName: { fontWeight: '700', fontSize: 12.5, color: Colors.accent },
+    postTime: { fontSize: 10, color: Colors.textDim, marginTop: 0 },
+    categoryDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
+    categoryText: { fontSize: 10, fontWeight: '700' },
+    categoryWrap: { flexDirection: 'row', alignItems: 'center' },
+    trendingText: { fontSize: 11, marginLeft: 6 },
+    content: { fontSize: 13.5, color: Colors.text, lineHeight: 19, paddingHorizontal: 12, paddingBottom: 10 },
+    image: { width: '100%', height: 180 },
+    reactionsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 9 },
+    reactionBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 18, overflow: 'hidden' },
+    reactionSeg: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 9, paddingVertical: 6 },
+    reactionSegActive: { backgroundColor: Colors.accent + '20' },
+    reactionEmoji: { fontSize: 13 },
+    reactionCount: { fontSize: 11, fontWeight: '700', color: Colors.textMuted },
+    commentBtn: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 4 },
+    commentBtnText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
+    saveBtn: { paddingHorizontal: 6, paddingVertical: 4 },
     saveIcon: { fontSize: 14 },
-    menuBtn: { padding: 4, marginLeft: 4 },
-    menuDots: { fontSize: 20, color: Colors.textMuted, fontWeight: '900' },
+    menuBtn: { padding: 4, marginLeft: 2 },
+    menuDots: { fontSize: 18, color: Colors.textMuted, fontWeight: '900' },
     menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-    menuCard: { backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, width: '70%', overflow: 'hidden' },
+    menuCard: { backgroundColor: Colors.card, borderRadius: 14, width: '70%', overflow: 'hidden', ...cardShadow },
     menuItem: { paddingVertical: 16, paddingHorizontal: 20, alignItems: 'center' },
     menuItemTextDanger: { color: Colors.danger, fontWeight: '700', fontSize: 15 },
     heartOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-    heartEmoji: { fontSize: 80 },
+    heartEmoji: { fontSize: 76 },
   });
 
   const catColor = CATEGORY_COLORS[post.category] ?? Colors.textMuted;
@@ -224,12 +240,13 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave }: 
         </LinearGradient>
         <View style={ps.authorMeta}>
           <Text style={ps.authorName}>{post.author}</Text>
-          <Text style={ps.postTime}>{timeAgo(post.createdAt)}</Text>
+          <View style={ps.categoryWrap}>
+            <View style={[ps.categoryDot, { backgroundColor: catColor }]} />
+            <Text style={[ps.categoryText, { color: catColor }]}>{post.category}</Text>
+            <Text style={ps.postTime}> · {timeAgo(post.createdAt)}</Text>
+            {post.trending && <Text style={ps.trendingText}>🔥</Text>}
+          </View>
         </View>
-        <View style={[ps.categoryBadge, { borderColor: catColor + '55', backgroundColor: catColor + '15' }]}>
-          <Text style={[ps.categoryText, { color: catColor }]}>{post.category}</Text>
-        </View>
-        {post.trending && <View style={ps.trendingBadge}><Text style={ps.trendingText}>🔥 Hot</Text></View>}
         {isOwner && <TouchableOpacity style={ps.menuBtn} onPress={() => setShowMenu(true)}><Text style={ps.menuDots}>⋮</Text></TouchableOpacity>}
       </View>
       <TouchableOpacity activeOpacity={1} onPress={handleDoubleTap}>
@@ -246,16 +263,23 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave }: 
         )}
       </TouchableOpacity>
       <View style={ps.reactionsRow}>
-        {post.reactions.map(r => (
-          <TouchableOpacity key={r.emoji} style={[ps.reactionBtn, r.reacted && ps.reactionBtnActive]} onPress={() => onReact(post.id, r.emoji)} activeOpacity={0.75}>
-            <Text style={ps.reactionEmoji}>{r.emoji}</Text>
-            <Text style={[ps.reactionCount, r.reacted && { color: Colors.accent }]}>{r.count}</Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={ps.commentBtn} onPress={() => onComment(post)} activeOpacity={0.75}>
+        <View style={ps.reactionBar}>
+          {post.reactions.map((r, idx) => (
+            <TouchableOpacity
+              key={r.emoji}
+              style={[ps.reactionSeg, r.reacted && ps.reactionSegActive, idx > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: Colors.border }]}
+              onPress={() => onReact(post.id, r.emoji)}
+              activeOpacity={0.7}
+            >
+              <Text style={ps.reactionEmoji}>{r.emoji}</Text>
+              {r.count > 0 && <Text style={[ps.reactionCount, r.reacted && { color: Colors.accent }]}>{r.count}</Text>}
+            </TouchableOpacity>
+          ))}
+        </View>
+        <TouchableOpacity style={ps.commentBtn} onPress={() => onComment(post)} activeOpacity={0.7}>
           <Text style={ps.commentBtnText}>💬 {post.comments.length || post.comment_count || 0}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={ps.saveBtn} onPress={() => onSave(post.id)} activeOpacity={0.75}>
+        <TouchableOpacity style={ps.saveBtn} onPress={() => onSave(post.id)} activeOpacity={0.7}>
           <Text style={ps.saveIcon}>{post.saved ? '🔖' : '📑'}</Text>
         </TouchableOpacity>
       </View>
@@ -285,20 +309,20 @@ const CreatePostSheet = ({ visible, onClose, onPost }: { visible: boolean; onClo
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const cps = StyleSheet.create({
-    sheet: { backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 32, borderWidth: 1, borderBottomWidth: 0, borderColor: Colors.border },
+    sheet: { backgroundColor: Colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, paddingBottom: 32, ...cardShadow },
     handle: { width: 36, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
     title: { fontWeight: '800', fontSize: 18, color: Colors.text, marginBottom: 4 },
     anon: { fontSize: 12, color: Colors.textMuted, marginBottom: 14 },
     pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-    pill: { backgroundColor: Colors.bg, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 6 },
+    pill: { backgroundColor: Colors.bg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
     pillText: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
-    input: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12, color: Colors.text, fontSize: 14, minHeight: 80 },
+    input: { backgroundColor: Colors.bg, borderRadius: 14, padding: 12, color: Colors.text, fontSize: 14, minHeight: 80 },
     charCount: { textAlign: 'right', fontSize: 11, color: Colors.textDim, marginTop: 4, marginBottom: 10 },
     imagePreviewWrap: { position: 'relative', marginBottom: 10 },
-    imagePreview: { width: '100%', height: 160, borderRadius: 12 },
+    imagePreview: { width: '100%', height: 160, borderRadius: 14 },
     removeImage: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
     mediaRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-    mediaBtn: { flex: 1, backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingVertical: 10, alignItems: 'center' },
+    mediaBtn: { flex: 1, backgroundColor: Colors.bg, borderRadius: 14, paddingVertical: 10, alignItems: 'center' },
     mediaBtnText: { fontSize: 13, fontWeight: '700', color: Colors.text },
     postBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
     postBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
@@ -336,7 +360,7 @@ const CreatePostSheet = ({ visible, onClose, onPost }: { visible: boolean; onClo
             <Text style={cps.anon}>Posted anonymously</Text>
             <View style={cps.pills}>
               {(CATEGORIES.filter(c => c !== 'All') as PostCategory[]).map(cat => (
-                <TouchableOpacity key={cat} style={[cps.pill, category === cat && { backgroundColor: (CATEGORY_COLORS[cat] ?? Colors.accent) + '22', borderColor: (CATEGORY_COLORS[cat] ?? Colors.accent) + '66' }]} onPress={() => setCategory(cat)}>
+                <TouchableOpacity key={cat} style={[cps.pill, category === cat && { backgroundColor: (CATEGORY_COLORS[cat] ?? Colors.accent) + '22' }]} onPress={() => setCategory(cat)}>
                   <Text style={[cps.pillText, category === cat && { color: CATEGORY_COLORS[cat] ?? Colors.accent }]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
@@ -380,18 +404,18 @@ export const BuzzScreen = () => {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10 },
-    headerTitle: { fontSize: 22, fontWeight: '900', color: Colors.text },
-    headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-    postBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 9 },
-    postBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-    categoriesRow: { flexGrow: 0, marginBottom: 6 },
-    categoriesContent: { paddingHorizontal: 14, gap: 8 },
-    pill: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 6 },
-    pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+    headerTitle: { fontSize: 20, fontWeight: '900', color: Colors.text },
+    headerSub: { fontSize: 11.5, color: Colors.textMuted, marginTop: 1 },
+    postBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 8, ...softShadow },
+    postBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
+    categoriesRow: { flexGrow: 0, marginBottom: 4 },
+    categoriesContent: { paddingHorizontal: 14, gap: 7 },
+    pill: { backgroundColor: Colors.card, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 6 },
+    pillActive: { backgroundColor: Colors.accent },
     pillText: { color: Colors.textMuted, fontSize: 12, fontWeight: '700' },
     pillTextActive: { color: '#fff' },
-    feed: { paddingTop: 6, paddingBottom: 20 },
+    feed: { paddingTop: 4, paddingBottom: 20 },
     empty: { textAlign: 'center', color: Colors.textMuted, marginTop: 60, fontSize: 14 },
   });
 

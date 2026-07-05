@@ -3,24 +3,24 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform } from
 import { useColors } from '../../theme/ThemeProvider';
 import { BuzzScreen } from './BuzzScreen';
 import { GroupsScreen } from './GroupsScreen';
+import { EventsScreen } from './EventsScreen';
 
 export const BuzzTabScreen = () => {
   const Colors = useColors();
-  const [activeTab, setActiveTab] = useState<'feed' | 'groups'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'groups' | 'events'>('feed');
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
     tabBar: {
-      flexDirection: 'row',
-      backgroundColor: Colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: Colors.border,
+      flexDirection: 'row', backgroundColor: Colors.card,
       paddingHorizontal: 16,
       paddingTop: Platform.OS === 'android' ? 24 : 12,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08, shadowRadius: 4, elevation: 3,
     },
     tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
     tabActive: { borderBottomColor: Colors.accent },
-    tabText: { fontSize: 14, fontWeight: '700', color: Colors.textMuted },
+    tabText: { fontSize: 13, fontWeight: '700', color: Colors.textMuted },
     tabTextActive: { color: Colors.accent },
     content: { flex: 1 },
   });
@@ -28,21 +28,24 @@ export const BuzzTabScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'feed' && styles.tabActive]}
-          onPress={() => setActiveTab('feed')}
-        >
-          <Text style={[styles.tabText, activeTab === 'feed' && styles.tabTextActive]}>⚡ Feed</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'groups' && styles.tabActive]}
-          onPress={() => setActiveTab('groups')}
-        >
-          <Text style={[styles.tabText, activeTab === 'groups' && styles.tabTextActive]}>👥 Groups</Text>
-        </TouchableOpacity>
+        {([
+          { key: 'feed', label: '⚡ Feed' },
+          { key: 'groups', label: '👥 Groups' },
+          { key: 'events', label: '🎉 Events' },
+        ] as const).map(tab => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => setActiveTab(tab.key)}
+          >
+            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
       <View style={styles.content}>
-        {activeTab === 'feed' ? <BuzzScreen /> : <GroupsScreen />}
+        {activeTab === 'feed' && <BuzzScreen />}
+        {activeTab === 'groups' && <GroupsScreen />}
+        {activeTab === 'events' && <EventsScreen />}
       </View>
     </SafeAreaView>
   );

@@ -8,11 +8,19 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type AuthStackParamList = {
-  Login: undefined;
-  Signup: undefined;
-  Main: undefined;
+  Login: undefined; Signup: undefined; Main: undefined;
+};
+
+const softShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+};
+const cardShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
 };
 
 export const LoginScreen = () => {
@@ -26,40 +34,51 @@ export const LoginScreen = () => {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
     scroll: { flexGrow: 1, padding: 24, justifyContent: 'center' },
-    logoWrap: { alignItems: 'center', marginBottom: 32 },
-    logo: { width: 72, height: 72, borderRadius: 20, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', marginBottom: 12, shadowColor: Colors.accent, shadowOpacity: 0.4, shadowRadius: 20, elevation: 10 },
-    logoText: { fontSize: 28, fontWeight: '900', color: '#fff' },
-    appName: { fontSize: 26, fontWeight: '900', color: Colors.text, letterSpacing: 0.5 },
-    tagline: { fontSize: 13, color: Colors.textMuted, marginTop: 4 },
-    card: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, padding: 24, marginBottom: 20 },
-    cardTitle: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
-    cardSub: { fontSize: 13, color: Colors.textMuted, marginBottom: 24 },
-    label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, marginBottom: 16 },
-    inputIcon: { fontSize: 16, marginRight: 8 },
-    input: { flex: 1, color: Colors.text, fontSize: 14, paddingVertical: 12 },
+
+    // Logo — gradient circle, glowing shadow
+    logoWrap: { alignItems: 'center', marginBottom: 30 },
+    logo: { width: 70, height: 70, borderRadius: 22, overflow: 'hidden', marginBottom: 12, shadowColor: Colors.accent, shadowOpacity: 0.45, shadowRadius: 20, elevation: 10 },
+    logoGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    logoText: { fontSize: 26, fontWeight: '900', color: '#fff' },
+    appName: { fontSize: 24, fontWeight: '900', color: Colors.text, letterSpacing: 0.5 },
+    tagline: { fontSize: 12.5, color: Colors.textMuted, marginTop: 4 },
+
+    // Card — shadow, no border
+    card: { backgroundColor: Colors.card, borderRadius: 22, padding: 22, marginBottom: 18, ...cardShadow },
+    cardTitle: { fontSize: 21, fontWeight: '800', color: Colors.text, marginBottom: 3 },
+    cardSub: { fontSize: 12.5, color: Colors.textMuted, marginBottom: 22 },
+
+    label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 7 },
+
+    // Inputs — bg fill, shadow, no border
+    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 13, paddingHorizontal: 12, marginBottom: 14, ...softShadow },
+    inputIcon: { fontSize: 15, marginRight: 8 },
+    input: { flex: 1, color: Colors.text, fontSize: 13.5, paddingVertical: 12 },
     showHide: { color: Colors.accent, fontSize: 12, fontWeight: '700' },
-    forgotWrap: { alignItems: 'flex-end', marginBottom: 20, marginTop: -8 },
+
+    forgotWrap: { alignItems: 'flex-end', marginBottom: 18, marginTop: -6 },
     forgotText: { color: Colors.accent, fontSize: 12, fontWeight: '600' },
-    loginBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-    loginBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-    divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+
+    // Sign in — gradient button
+    loginBtn: { borderRadius: 14, overflow: 'hidden', ...softShadow },
+    loginBtnGradient: { paddingVertical: 15, alignItems: 'center' },
+    loginBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+
+    // Divider
+    divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 18 },
+    dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
     dividerText: { color: Colors.textDim, fontSize: 12 },
-    signupBtn: { borderWidth: 1, borderColor: Colors.border, borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: Colors.cardAlt },
-    signupBtnText: { color: Colors.text, fontWeight: '700', fontSize: 15 },
+
+    // Create account — flat secondary button
+    signupBtn: { backgroundColor: Colors.bg, borderRadius: 14, paddingVertical: 14, alignItems: 'center', ...softShadow },
+    signupBtnText: { color: Colors.text, fontWeight: '700', fontSize: 14.5 },
+
     privacyNote: { textAlign: 'center', color: Colors.textDim, fontSize: 12, lineHeight: 20 },
   });
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
-    }
-    if (!email.includes('@')) {
-      Alert.alert('Invalid email', 'Please enter a valid college email.');
-      return;
-    }
+    if (!email.trim() || !password.trim()) { Alert.alert('Missing fields', 'Please enter your email and password.'); return; }
+    if (!email.includes('@')) { Alert.alert('Invalid email', 'Please enter a valid college email.'); return; }
     setLoading(true);
     try {
       const response = await fetch('https://campus-backend-production-2dbb.up.railway.app/api/auth/login', {
@@ -81,23 +100,26 @@ export const LoginScreen = () => {
       } else {
         Alert.alert('Login failed', msg || 'Something went wrong. Try again.');
       }
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
+          {/* Logo */}
           <View style={styles.logoWrap}>
             <View style={styles.logo}>
-              <Text style={styles.logoText}>CC</Text>
+              <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.logoGradient}>
+                <Text style={styles.logoText}>CC</Text>
+              </LinearGradient>
             </View>
             <Text style={styles.appName}>CampusConnect</Text>
             <Text style={styles.tagline}>Your college. Your community.</Text>
           </View>
 
+          {/* Login card */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Welcome back 👋</Text>
             <Text style={styles.cardSub}>Sign in with your college email</Text>
@@ -138,8 +160,10 @@ export const LoginScreen = () => {
               <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.loginBtn, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Sign In →</Text>}
+            <TouchableOpacity style={[styles.loginBtn, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
+              <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.loginBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Sign In →</Text>}
+              </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.divider}>
@@ -148,7 +172,7 @@ export const LoginScreen = () => {
               <View style={styles.dividerLine} />
             </View>
 
-            <TouchableOpacity style={styles.signupBtn} onPress={() => navigation.navigate('Signup')}>
+            <TouchableOpacity style={styles.signupBtn} onPress={() => navigation.navigate('Signup')} activeOpacity={0.8}>
               <Text style={styles.signupBtnText}>Create New Account</Text>
             </TouchableOpacity>
           </View>
@@ -157,6 +181,7 @@ export const LoginScreen = () => {
             🔒 Only verified college students can join.{'\n'}
             Your identity stays anonymous on campus.
           </Text>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

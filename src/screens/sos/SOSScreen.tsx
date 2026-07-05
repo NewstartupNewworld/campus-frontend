@@ -7,50 +7,30 @@ import {
 import * as Location from 'expo-location';
 import * as SMS from 'expo-sms';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../../theme/colors';
+import { useColors } from '../../theme/ThemeProvider';
 
 const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
 type AlertSeverity = 'critical' | 'warning' | 'info';
 
 interface SOSAlert {
-  id: string;
-  type: string;
-  message: string;
-  location: string;
-  reportedBy: string;
-  severity: AlertSeverity;
-  createdAt: string;
-  resolved: boolean;
-  respondersCount: number;
+  id: string; type: string; message: string; location: string;
+  reportedBy: string; severity: AlertSeverity; createdAt: string;
+  resolved: boolean; respondersCount: number;
 }
 
 interface QuickContact {
-  label: string;
-  number: string;
-  icon: string;
-  color: string;
+  label: string; number: string; icon: string; color: string;
 }
 
-const DEFAULT_CONTACTS: QuickContact[] = [
-  { label: 'Campus Security', number: '1800-XXX-0001', icon: '🛡️', color: Colors.accent },
-  { label: 'Ambulance',       number: '108',           icon: '🚑', color: Colors.danger },
-  { label: 'Police',          number: '100',           icon: '👮', color: '#4F8CFF' },
-  { label: 'Warden',          number: '1800-XXX-0002', icon: '🏠', color: Colors.warn },
-  { label: 'Fire',            number: '101',           icon: '🔥', color: '#FF6B35' },
-  { label: 'Women Helpline',  number: '1091',          icon: '💜', color: '#C97BFF' },
-];
-
-const ALERT_TYPES = [
-  'Medical Emergency', 'Fire', 'Suspicious Activity',
-  'Harassment', 'Power Outage', 'Flood / Waterlogging', 'Other',
-];
-
-const severityColor = (s: AlertSeverity) =>
-  s === 'critical' ? Colors.danger : s === 'warning' ? Colors.warn : Colors.accent;
-
-const severityIcon = (s: AlertSeverity) =>
-  s === 'critical' ? '🚨' : s === 'warning' ? '⚠️' : 'ℹ️';
+const softShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+};
+const cardShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
+};
 
 const timeAgo = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime();
@@ -60,135 +40,131 @@ const timeAgo = (iso: string) => {
   return `${Math.floor(m / 60)}h ago`;
 };
 
+// --- Pulsing SOS button — unchanged logic, useColors instead of Colors import ---
 const PulsingSOSButton = ({ onPress, active }: { onPress: () => void; active: boolean }) => {
+  const Colors = useColors();
   const pulse1 = useRef(new Animated.Value(1)).current;
   const pulse2 = useRef(new Animated.Value(1)).current;
   const pulse3 = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!active) {
-      pulse1.setValue(1); pulse2.setValue(1); pulse3.setValue(1);
-      return;
-    }
+    if (!active) { pulse1.setValue(1); pulse2.setValue(1); pulse3.setValue(1); return; }
     const makeLoop = (val: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(val, { toValue: 2.2, duration: 1200, useNativeDriver: true }),
-          Animated.timing(val, { toValue: 1, duration: 0, useNativeDriver: true }),
-        ])
-      );
-    const a1 = makeLoop(pulse1, 0);
-    const a2 = makeLoop(pulse2, 400);
-    const a3 = makeLoop(pulse3, 800);
+      Animated.loop(Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(val, { toValue: 2.2, duration: 1200, useNativeDriver: true }),
+        Animated.timing(val, { toValue: 1, duration: 0, useNativeDriver: true }),
+      ]));
+    const a1 = makeLoop(pulse1, 0); const a2 = makeLoop(pulse2, 400); const a3 = makeLoop(pulse3, 800);
     a1.start(); a2.start(); a3.start();
     return () => { a1.stop(); a2.stop(); a3.stop(); };
   }, [active]);
 
+  const btnStyles = StyleSheet.create({
+    wrap: { alignItems: 'center', justifyContent: 'center', height: 220, marginVertical: 8 },
+    ring: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.danger },
+    button: { width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.card, borderWidth: 3, borderColor: Colors.danger, alignItems: 'center', justifyContent: 'center', shadowColor: Colors.danger, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
+    buttonActive: { backgroundColor: Colors.danger },
+    icon: { fontSize: 36, marginBottom: 4 },
+    label: { fontSize: 20, fontWeight: '900', color: Colors.text, letterSpacing: 2 },
+    sublabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 3 },
+  });
+
   return (
-    <View style={btn.wrap}>
+    <View style={btnStyles.wrap}>
       {active && (
         <>
-          <Animated.View style={[btn.ring, { transform: [{ scale: pulse1 }], opacity: pulse1.interpolate({ inputRange: [1, 2.2], outputRange: [0.4, 0] }) }]} />
-          <Animated.View style={[btn.ring, { transform: [{ scale: pulse2 }], opacity: pulse2.interpolate({ inputRange: [1, 2.2], outputRange: [0.3, 0] }) }]} />
-          <Animated.View style={[btn.ring, { transform: [{ scale: pulse3 }], opacity: pulse3.interpolate({ inputRange: [1, 2.2], outputRange: [0.2, 0] }) }]} />
+          <Animated.View style={[btnStyles.ring, { transform: [{ scale: pulse1 }], opacity: pulse1.interpolate({ inputRange: [1, 2.2], outputRange: [0.4, 0] }) }]} />
+          <Animated.View style={[btnStyles.ring, { transform: [{ scale: pulse2 }], opacity: pulse2.interpolate({ inputRange: [1, 2.2], outputRange: [0.3, 0] }) }]} />
+          <Animated.View style={[btnStyles.ring, { transform: [{ scale: pulse3 }], opacity: pulse3.interpolate({ inputRange: [1, 2.2], outputRange: [0.2, 0] }) }]} />
         </>
       )}
-      <TouchableOpacity
-        style={[btn.button, active && btn.buttonActive]}
-        onPress={onPress}
-        activeOpacity={0.85}
-      >
-        <Text style={btn.icon}>{active ? '✕' : '🚨'}</Text>
-        <Text style={btn.label}>{active ? 'CANCEL SOS' : 'SOS'}</Text>
-        <Text style={btn.sublabel}>{active ? 'Alert is live' : 'Hold to send alert'}</Text>
+      <TouchableOpacity style={[btnStyles.button, active && btnStyles.buttonActive]} onPress={onPress} activeOpacity={0.85}>
+        <Text style={btnStyles.icon}>{active ? '✕' : '🚨'}</Text>
+        <Text style={btnStyles.label}>{active ? 'CANCEL' : 'SOS'}</Text>
+        <Text style={btnStyles.sublabel}>{active ? 'Alert is live' : 'Tap to send alert'}</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-const btn = StyleSheet.create({
-  wrap: { alignItems: 'center', justifyContent: 'center', height: 220, marginVertical: 8 },
-  ring: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.danger },
-  button: { width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.card, borderWidth: 3, borderColor: Colors.danger, alignItems: 'center', justifyContent: 'center', shadowColor: Colors.danger, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
-  buttonActive: { backgroundColor: Colors.danger },
-  icon: { fontSize: 36, marginBottom: 4 },
-  label: { fontSize: 20, fontWeight: '900', color: Colors.text, letterSpacing: 2 },
-  sublabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 3 },
-});
-
-const AlertTypePicker = ({ selected, onSelect }: { selected: string; onSelect: (t: string) => void }) => (
-  <View style={atp.wrap}>
-    <Text style={atp.label}>Alert Type</Text>
-    <View style={atp.grid}>
-      {ALERT_TYPES.map(t => (
-        <TouchableOpacity key={t} style={[atp.pill, selected === t && atp.pillActive]} onPress={() => onSelect(t)}>
-          <Text style={[atp.pillText, selected === t && atp.pillTextActive]}>{t}</Text>
-        </TouchableOpacity>
-      ))}
+// --- Alert type picker — shadow pills, no borders ---
+const AlertTypePicker = ({ selected, onSelect }: { selected: string; onSelect: (t: string) => void }) => {
+  const Colors = useColors();
+  const ALERT_TYPES = ['Medical Emergency', 'Fire', 'Suspicious Activity', 'Harassment', 'Power Outage', 'Flood / Waterlogging', 'Other'];
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>Alert Type</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {ALERT_TYPES.map(t => (
+          <TouchableOpacity
+            key={t}
+            style={[{ backgroundColor: Colors.card, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, ...softShadow },
+              selected === t && { backgroundColor: Colors.danger + '22' }]}
+            onPress={() => onSelect(t)}
+          >
+            <Text style={[{ fontSize: 12, fontWeight: '600', color: Colors.textMuted }, selected === t && { color: Colors.danger, fontWeight: '700' }]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
-const atp = StyleSheet.create({
-  wrap: { marginBottom: 14 },
-  label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  pill: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 6 },
-  pillActive: { backgroundColor: Colors.danger + '22', borderColor: Colors.danger + '88' },
-  pillText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
-  pillTextActive: { color: Colors.danger, fontWeight: '700' },
-});
+// --- Contact card — shadow, colored accent, no border ---
+const ContactCard = ({ contact, onLongPress }: { contact: QuickContact; onLongPress: () => void }) => {
+  const Colors = useColors();
+  return (
+    <TouchableOpacity
+      style={{ width: '47%', backgroundColor: Colors.card, borderRadius: 16, padding: 14, alignItems: 'center', gap: 4, ...softShadow }}
+      onPress={() => Linking.openURL(`tel:${contact.number}`)}
+      onLongPress={onLongPress}
+      activeOpacity={0.8}
+    >
+      <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: contact.color + '18', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 22 }}>{contact.icon}</Text>
+      </View>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text, textAlign: 'center' }}>{contact.label}</Text>
+      <Text style={{ fontSize: 12, fontWeight: '800', color: contact.color }}>{contact.number}</Text>
+      <Text style={{ fontSize: 9, color: Colors.textDim, marginTop: 1 }}>Hold to edit</Text>
+    </TouchableOpacity>
+  );
+};
 
-const ContactCard = ({ contact, onLongPress }: { contact: QuickContact; onLongPress: () => void }) => (
-  <TouchableOpacity
-    style={[cc.card, { borderColor: contact.color + '44' }]}
-    onPress={() => Linking.openURL(`tel:${contact.number}`)}
-    onLongPress={onLongPress}
-    activeOpacity={0.8}
-  >
-    <Text style={cc.icon}>{contact.icon}</Text>
-    <Text style={cc.label}>{contact.label}</Text>
-    <Text style={[cc.number, { color: contact.color }]}>{contact.number}</Text>
-    <Text style={cc.editHint}>Hold to edit</Text>
-  </TouchableOpacity>
-);
-
-const cc = StyleSheet.create({
-  card: { width: '47%', backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, padding: 14, alignItems: 'center', gap: 4 },
-  icon: { fontSize: 26 },
-  label: { fontSize: 12, fontWeight: '700', color: Colors.text, textAlign: 'center' },
-  number: { fontSize: 12, fontWeight: '800' },
-  editHint: { fontSize: 9, color: Colors.textDim, marginTop: 2 },
-});
-
+// --- Alert card — shadow, no border, severity tint ---
 const AlertCard = ({ alert, onRespond }: { alert: SOSAlert; onRespond: (id: string) => void }) => {
+  const Colors = useColors();
+  const severityColor = (s: AlertSeverity) => s === 'critical' ? Colors.danger : s === 'warning' ? Colors.warn : Colors.accent;
+  const severityIcon = (s: AlertSeverity) => s === 'critical' ? '🚨' : s === 'warning' ? '⚠️' : 'ℹ️';
   const color = severityColor(alert.severity);
   return (
-    <View style={[ac.card, { borderColor: color + '44', opacity: alert.resolved ? 0.5 : 1 }]}>
-      <View style={ac.cardHeader}>
+    <View style={{ backgroundColor: Colors.card, borderRadius: 16, marginBottom: 10, padding: 14, opacity: alert.resolved ? 0.5 : 1, ...softShadow }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
         <Text style={{ fontSize: 18 }}>{severityIcon(alert.severity)}</Text>
-        <View style={ac.headerText}>
-          <Text style={[ac.type, { color }]}>{alert.type}</Text>
-          <Text style={ac.meta}>📍 {alert.location} • {timeAgo(alert.createdAt)}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontWeight: '800', fontSize: 13.5, color }}>{alert.type}</Text>
+          <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>📍 {alert.location} · {timeAgo(alert.createdAt)}</Text>
         </View>
-        {alert.resolved
-          ? <View style={ac.resolvedBadge}><Text style={ac.resolvedText}>✓ Resolved</Text></View>
-          : <View style={[ac.liveBadge, { backgroundColor: color + '22', borderColor: color + '55' }]}>
-              <View style={[ac.liveDot, { backgroundColor: color }]} />
-              <Text style={[ac.liveText, { color }]}>Live</Text>
-            </View>
-        }
+        {alert.resolved ? (
+          <View style={{ backgroundColor: Colors.success + '22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.success }}>✓ Resolved</Text>
+          </View>
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: color + '22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
+            <Text style={{ fontSize: 10, fontWeight: '700', color }}>Live</Text>
+          </View>
+        )}
       </View>
-      <Text style={ac.message}>{alert.message}</Text>
-      <View style={ac.footer}>
-        <Text style={ac.reporter}>Reported by {alert.reportedBy}</Text>
+      <Text style={{ fontSize: 13, color: Colors.text, lineHeight: 19, marginBottom: 10 }}>{alert.message}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 11, color: Colors.textDim }}>Reported by {alert.reportedBy}</Text>
         {!alert.resolved && (
           <TouchableOpacity
-            style={[ac.respondBtn, { borderColor: color + '66', backgroundColor: color + '18' }]}
+            style={{ backgroundColor: color + '18', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 }}
             onPress={() => onRespond(alert.id)}
           >
-            <Text style={[ac.respondText, { color }]}>🙋 Responding ({alert.respondersCount})</Text>
+            <Text style={{ fontSize: 11, fontWeight: '700', color }}>🙋 Responding ({alert.respondersCount})</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -196,25 +172,8 @@ const AlertCard = ({ alert, onRespond }: { alert: SOSAlert; onRespond: (id: stri
   );
 };
 
-const ac = StyleSheet.create({
-  card: { backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, marginBottom: 10, padding: 14 },
-  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
-  headerText: { flex: 1 },
-  type: { fontWeight: '800', fontSize: 14 },
-  meta: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
-  resolvedBadge: { backgroundColor: Colors.success + '22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: Colors.success + '44' },
-  resolvedText: { fontSize: 10, fontWeight: '700', color: Colors.success },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
-  liveDot: { width: 6, height: 6, borderRadius: 3 },
-  liveText: { fontSize: 10, fontWeight: '700' },
-  message: { fontSize: 13, color: Colors.text, lineHeight: 20, marginBottom: 10 },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reporter: { fontSize: 11, color: Colors.textDim },
-  respondBtn: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
-  respondText: { fontSize: 11, fontWeight: '700' },
-});
-
 export const SOSScreen = () => {
+  const Colors = useColors();
   const [sosActive, setSosActive] = useState(false);
   const [alertType, setAlertType] = useState('Medical Emergency');
   const [location, setLocation] = useState<string | null>(null);
@@ -223,7 +182,14 @@ export const SOSScreen = () => {
   const [loadingAlerts, setLoadingAlerts] = useState(true);
   const [countdown, setCountdown] = useState(5);
   const [countingDown, setCountingDown] = useState(false);
-  const [contacts, setContacts] = useState<QuickContact[]>(DEFAULT_CONTACTS);
+  const [contacts, setContacts] = useState<QuickContact[]>([
+    { label: 'Campus Security', number: '1800-XXX-0001', icon: '🛡️', color: '#4F7CFF' },
+    { label: 'Ambulance',       number: '108',           icon: '🚑', color: '#EF4444' },
+    { label: 'Police',          number: '100',           icon: '👮', color: '#4F8CFF' },
+    { label: 'Warden',          number: '1800-XXX-0002', icon: '🏠', color: '#F97316' },
+    { label: 'Fire',            number: '101',           icon: '🔥', color: '#FF6B35' },
+    { label: 'Women Helpline',  number: '1091',          icon: '💜', color: '#C97BFF' },
+  ]);
   const [editingContact, setEditingContact] = useState<QuickContact | null>(null);
   const [editNumber, setEditNumber] = useState('');
   const [editModal, setEditModal] = useState(false);
@@ -241,12 +207,8 @@ export const SOSScreen = () => {
         setLocation([g.name, g.street, g.district].filter(Boolean).join(', '));
       }
     })();
-
     const loadContacts = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('quickContacts');
-        if (saved) setContacts(JSON.parse(saved));
-      } catch (e) {}
+      try { const saved = await AsyncStorage.getItem('quickContacts'); if (saved) setContacts(JSON.parse(saved)); } catch (e) {}
     };
     loadContacts();
     fetchAlerts();
@@ -255,53 +217,28 @@ export const SOSScreen = () => {
   const fetchAlerts = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/sos/alerts`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(`${API_URL}/api/sos/alerts`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json();
       if (response.ok && data.alerts) {
-        const mapped: SOSAlert[] = data.alerts.map((a: any) => ({
-          id: a.id,
-          type: a.type,
-          message: a.message,
-          location: a.location_label || 'Campus',
-          reportedBy: a.reported_by || 'Anonymous',
-          severity: a.severity,
-          createdAt: a.created_at,
-          resolved: a.resolved,
+        setAlerts(data.alerts.map((a: any) => ({
+          id: a.id, type: a.type, message: a.message,
+          location: a.location_label || 'Campus', reportedBy: a.reported_by || 'Anonymous',
+          severity: a.severity, createdAt: a.created_at, resolved: a.resolved,
           respondersCount: parseInt(a.responders_count) || 0,
-        }));
-        setAlerts(mapped);
+        })));
       }
-    } catch (e) {
-      console.error('Failed to fetch alerts:', e);
-    } finally {
-      setLoadingAlerts(false);
-    }
+    } catch (e) { console.error('Failed to fetch alerts:', e); }
+    finally { setLoadingAlerts(false); }
   };
 
   const handleSOSPress = () => {
-    if (sosActive) {
-      setSosActive(false);
-      setCountingDown(false);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-      setCountdown(5);
-      Vibration.cancel();
-      return;
-    }
-    setCountingDown(true);
-    setCountdown(5);
+    if (sosActive) { setSosActive(false); setCountingDown(false); if (countdownRef.current) clearInterval(countdownRef.current); setCountdown(5); Vibration.cancel(); return; }
+    setCountingDown(true); setCountdown(5);
     Vibration.vibrate([0, 200, 100, 200]);
     let remaining = 5;
     countdownRef.current = setInterval(() => {
-      remaining -= 1;
-      setCountdown(remaining);
-      if (remaining <= 0) {
-        clearInterval(countdownRef.current!);
-        setCountingDown(false);
-        setSosActive(true);
-        sendSOS();
-      }
+      remaining -= 1; setCountdown(remaining);
+      if (remaining <= 0) { clearInterval(countdownRef.current!); setCountingDown(false); setSosActive(true); sendSOS(); }
     }, 1000);
   };
 
@@ -313,120 +250,75 @@ export const SOSScreen = () => {
       const response = await fetch(`${API_URL}/api/sos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          type: alertType,
-          message: `Emergency reported near ${location ?? 'campus'}. Immediate help needed.`,
-          latitude: coords?.latitude || null,
-          longitude: coords?.longitude || null,
-          locationLabel: location ?? 'Campus',
-        }),
+        body: JSON.stringify({ type: alertType, message: `Emergency reported near ${location ?? 'campus'}. Immediate help needed.`, latitude: coords?.latitude || null, longitude: coords?.longitude || null, locationLabel: location ?? 'Campus' }),
       });
       const data = await response.json();
       if (response.ok) {
         backendSucceeded = true;
-        const newAlert: SOSAlert = {
-          id: data.id,
-          type: alertType,
-          message: `Emergency reported near ${location ?? 'campus'}. Immediate help needed.`,
-          location: location ?? 'Campus',
-          reportedBy: 'You (Anonymous)',
-          severity: alertType === 'Medical Emergency' || alertType === 'Fire' ? 'critical' : 'warning',
-          createdAt: new Date().toISOString(),
-          resolved: false,
-          respondersCount: 0,
-        };
-        setAlerts(prev => [newAlert, ...prev]);
+        setAlerts(prev => [{ id: data.id, type: alertType, message: `Emergency reported near ${location ?? 'campus'}. Immediate help needed.`, location: location ?? 'Campus', reportedBy: 'You (Anonymous)', severity: alertType === 'Medical Emergency' || alertType === 'Fire' ? 'critical' : 'warning', createdAt: new Date().toISOString(), resolved: false, respondersCount: 0 }, ...prev]);
       }
-    } catch (e) {
-      console.error('SOS send error:', e);
-    }
-
-    // SMS fallback — offer if backend failed (likely no internet)
-    if (!backendSucceeded) {
-      await sendSMSFallback();
-    }
+    } catch (e) { console.error('SOS send error:', e); }
+    if (!backendSucceeded) await sendSMSFallback();
   };
 
   const sendSMSFallback = async () => {
     try {
       const isAvailable = await SMS.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('SOS Failed', 'Could not send alert online and SMS is not available on this device.');
-        return;
-      }
-      const mapsLink = coords
-        ? `https://maps.google.com/?q=${coords.latitude},${coords.longitude}`
-        : '';
+      if (!isAvailable) { Alert.alert('SOS Failed', 'Could not send alert online and SMS is not available on this device.'); return; }
+      const mapsLink = coords ? `https://maps.google.com/?q=${coords.latitude},${coords.longitude}` : '';
       const message = `🚨 SOS: ${alertType}\nLocation: ${location ?? 'Unknown'}\n${mapsLink}\nThis is an automated emergency alert from CampusConnect.`;
-      const recipients = contacts
-        .filter(c => /^\d{3,}$/.test(c.number.replace(/[-\s]/g, '')))
-        .map(c => c.number.replace(/[-\s]/g, ''));
-
+      const recipients = contacts.filter(c => /^\d{3,}$/.test(c.number.replace(/[-\s]/g, ''))).map(c => c.number.replace(/[-\s]/g, ''));
       await SMS.sendSMSAsync(recipients, message);
-    } catch (e) {
-      console.error('SMS fallback error:', e);
-    }
+    } catch (e) { console.error('SMS fallback error:', e); }
   };
 
   const handleCancelCountdown = () => {
     if (countdownRef.current) clearInterval(countdownRef.current);
-    setCountingDown(false);
-    setCountdown(5);
-    Vibration.cancel();
+    setCountingDown(false); setCountdown(5); Vibration.cancel();
   };
 
   const handleRespond = async (id: string) => {
-    setAlerts(prev => prev.map(a =>
-      a.id === id ? { ...a, respondersCount: a.respondersCount + 1 } : a
-    ));
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, respondersCount: a.respondersCount + 1 } : a));
     try {
       const token = await AsyncStorage.getItem('token');
-      await fetch(`${API_URL}/api/sos/${id}/respond`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch (e) {
-      console.error('Respond error:', e);
-    }
+      await fetch(`${API_URL}/api/sos/${id}/respond`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) { console.error('Respond error:', e); }
   };
 
-  const handleEditContact = (contact: QuickContact) => {
-    setEditingContact(contact);
-    setEditNumber(contact.number);
-    setEditModal(true);
-  };
+  const handleEditContact = (contact: QuickContact) => { setEditingContact(contact); setEditNumber(contact.number); setEditModal(true); };
 
   const handleSaveContact = async () => {
     if (!editingContact) return;
-    const updated = contacts.map(c =>
-      c.label === editingContact.label ? { ...c, number: editNumber } : c
-    );
+    const updated = contacts.map(c => c.label === editingContact.label ? { ...c, number: editNumber } : c);
     setContacts(updated);
     await AsyncStorage.setItem('quickContacts', JSON.stringify(updated));
     setEditModal(false);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
 
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>🚨 SOS</Text>
-          <Text style={styles.headerSub}>Campus Emergency Network</Text>
+        {/* Header */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: Colors.text }}>🚨 SOS</Text>
+          <Text style={{ fontSize: 11.5, color: Colors.textMuted, marginTop: 1 }}>Campus Emergency Network</Text>
         </View>
 
-        <View style={styles.locationBar}>
-          <Text style={styles.locationIcon}>📍</Text>
-          <Text style={styles.locationText} numberOfLines={1}>{location ?? 'Getting your location...'}</Text>
-          <View style={[styles.locationDot, { backgroundColor: location ? Colors.success : Colors.warn }]} />
+        {/* Location bar — shadow, no border */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 10, backgroundColor: Colors.card, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, ...softShadow }}>
+          <Text style={{ fontSize: 13 }}>📍</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: Colors.textMuted }} numberOfLines={1}>{location ?? 'Getting your location...'}</Text>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: location ? Colors.success : Colors.warn }} />
         </View>
 
+        {/* Countdown card */}
         {countingDown && (
-          <View style={styles.countdownCard}>
-            <Text style={styles.countdownNum}>{countdown}</Text>
-            <Text style={styles.countdownLabel}>Sending SOS in {countdown}s</Text>
-            <TouchableOpacity style={styles.cancelCountdown} onPress={handleCancelCountdown}>
-              <Text style={styles.cancelCountdownText}>✕ Cancel</Text>
+          <View style={{ marginHorizontal: 16, marginVertical: 20, backgroundColor: Colors.danger + '18', borderRadius: 20, alignItems: 'center', padding: 30, ...cardShadow }}>
+            <Text style={{ fontSize: 80, fontWeight: '900', color: Colors.danger, lineHeight: 90 }}>{countdown}</Text>
+            <Text style={{ fontSize: 16, color: Colors.text, fontWeight: '700', marginBottom: 20 }}>Sending SOS in {countdown}s</Text>
+            <TouchableOpacity style={{ backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10, ...softShadow }} onPress={handleCancelCountdown}>
+              <Text style={{ color: Colors.text, fontWeight: '700', fontSize: 14 }}>✕ Cancel</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -435,62 +327,62 @@ export const SOSScreen = () => {
           <>
             <PulsingSOSButton onPress={handleSOSPress} active={sosActive} />
             {sosActive && (
-              <View style={styles.activeAlert}>
-                <Text style={styles.activeAlertText}>🔴 Your SOS is live — nearby students & security have been notified</Text>
+              <View style={{ marginHorizontal: 16, marginBottom: 14, backgroundColor: Colors.danger + '18', borderRadius: 14, padding: 12, ...softShadow }}>
+                <Text style={{ color: Colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 20 }}>🔴 Your SOS is live — nearby students & security have been notified</Text>
               </View>
             )}
             {!sosActive && (
-              <View style={styles.section}>
+              <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
                 <AlertTypePicker selected={alertType} onSelect={setAlertType} />
               </View>
             )}
           </>
         )}
 
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.smsBtn} onPress={sendSMSFallback}>
-            <Text style={styles.smsBtnText}>📩 Send SOS via SMS (works without internet)</Text>
+        {/* SMS fallback — shadow, no border */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+          <TouchableOpacity style={{ backgroundColor: Colors.warn + '18', borderRadius: 14, paddingVertical: 13, alignItems: 'center', ...softShadow }} onPress={sendSMSFallback}>
+            <Text style={{ color: Colors.warn, fontWeight: '700', fontSize: 13, textAlign: 'center', paddingHorizontal: 10 }}>📩 Send SOS via SMS (works without internet)</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Contacts</Text>
-          <Text style={styles.editHintGlobal}>💡 Long press any contact to edit the number</Text>
-          <View style={styles.contactsGrid}>
-            {contacts.map(c => (
-              <ContactCard key={c.label} contact={c} onLongPress={() => handleEditContact(c)} />
-            ))}
+        {/* Quick Contacts */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+          <Text style={{ fontSize: 14.5, fontWeight: '800', color: Colors.text, marginBottom: 4 }}>Quick Contacts</Text>
+          <Text style={{ fontSize: 11, color: Colors.textDim, marginBottom: 12 }}>💡 Long press any contact to edit the number</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' }}>
+            {contacts.map(c => <ContactCard key={c.label} contact={c} onLongPress={() => handleEditContact(c)} />)}
           </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Campus Alerts</Text>
-            <View style={styles.liveIndicator}>
-              <View style={styles.livePulse} />
-              <Text style={styles.liveText}>Live</Text>
+        {/* Campus Alerts */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 14.5, fontWeight: '800', color: Colors.text }}>Campus Alerts</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.danger }} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.danger }}>Live</Text>
             </View>
           </View>
           {loadingAlerts ? (
             <ActivityIndicator color={Colors.danger} style={{ marginVertical: 20 }} />
           ) : alerts.length === 0 ? (
-            <Text style={styles.noAlerts}>No active alerts on campus 🟢</Text>
+            <Text style={{ textAlign: 'center', color: Colors.textMuted, paddingVertical: 20, fontSize: 13 }}>No active alerts on campus 🟢</Text>
           ) : (
-            alerts.map(a => (
-              <AlertCard key={a.id} alert={a} onRespond={handleRespond} />
-            ))
+            alerts.map(a => <AlertCard key={a.id} alert={a} onRespond={handleRespond} />)
           )}
         </View>
 
       </ScrollView>
 
+      {/* Edit contact modal — shadow, no border */}
       <Modal visible={editModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit {editingContact?.label}</Text>
-            <Text style={styles.modalSub}>Enter the correct phone number</Text>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '80%', ...cardShadow }}>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: Colors.text, marginBottom: 4 }}>Edit {editingContact?.label}</Text>
+            <Text style={{ fontSize: 12.5, color: Colors.textMuted, marginBottom: 16 }}>Enter the correct phone number</Text>
             <TextInput
-              style={styles.modalInput}
+              style={{ backgroundColor: Colors.bg, borderRadius: 12, padding: 13, color: Colors.text, fontSize: 15, marginBottom: 16, ...softShadow }}
               value={editNumber}
               onChangeText={setEditNumber}
               keyboardType="phone-pad"
@@ -498,58 +390,17 @@ export const SOSScreen = () => {
               placeholderTextColor={Colors.textDim}
               autoFocus
             />
-            <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setEditModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity style={{ flex: 1, backgroundColor: Colors.bg, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }} onPress={() => setEditModal(false)}>
+                <Text style={{ color: Colors.text, fontWeight: '700' }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalSave} onPress={handleSaveContact}>
-                <Text style={styles.modalSaveText}>Save</Text>
+              <TouchableOpacity style={{ flex: 1, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center', ...softShadow }} onPress={handleSaveContact}>
+                <Text style={{ color: '#fff', fontWeight: '800' }}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { paddingBottom: 30 },
-  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: Colors.text },
-  headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  locationBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8, backgroundColor: Colors.card, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 9 },
-  locationIcon: { fontSize: 14 },
-  locationText: { flex: 1, fontSize: 12, color: Colors.textMuted },
-  locationDot: { width: 8, height: 8, borderRadius: 4 },
-  countdownCard: { marginHorizontal: 16, marginVertical: 20, backgroundColor: Colors.danger + '18', borderRadius: 20, borderWidth: 2, borderColor: Colors.danger + '66', alignItems: 'center', padding: 30 },
-  countdownNum: { fontSize: 80, fontWeight: '900', color: Colors.danger, lineHeight: 90 },
-  countdownLabel: { fontSize: 16, color: Colors.text, fontWeight: '700', marginBottom: 20 },
-  cancelCountdown: { backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 24, paddingVertical: 10 },
-  cancelCountdownText: { color: Colors.text, fontWeight: '700', fontSize: 14 },
-  activeAlert: { marginHorizontal: 16, marginBottom: 14, backgroundColor: Colors.danger + '18', borderRadius: 12, borderWidth: 1, borderColor: Colors.danger + '44', padding: 12 },
-  activeAlertText: { color: Colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
-  section: { paddingHorizontal: 16, marginBottom: 20 },
-  smsBtn: { backgroundColor: Colors.warn + '15', borderRadius: 14, borderWidth: 1, borderColor: Colors.warn + '44', paddingVertical: 14, alignItems: 'center' },
-  smsBtnText: { color: Colors.warn, fontWeight: '700', fontSize: 13, textAlign: 'center', paddingHorizontal: 10 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 4 },
-  editHintGlobal: { fontSize: 11, color: Colors.textDim, marginBottom: 12 },
-  contactsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  livePulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger },
-  liveText: { fontSize: 11, fontWeight: '700', color: Colors.danger },
-  noAlerts: { textAlign: 'center', color: Colors.textMuted, paddingVertical: 20, fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '80%', borderWidth: 1, borderColor: Colors.border },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 4 },
-  modalSub: { fontSize: 13, color: Colors.textMuted, marginBottom: 16 },
-  modalInput: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, color: Colors.text, fontSize: 16, marginBottom: 16 },
-  modalBtns: { flexDirection: 'row', gap: 12 },
-  modalCancel: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  modalCancelText: { color: Colors.text, fontWeight: '700' },
-  modalSave: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  modalSaveText: { color: '#fff', fontWeight: '800' },
-});

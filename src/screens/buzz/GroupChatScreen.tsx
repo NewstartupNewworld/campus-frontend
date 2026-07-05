@@ -15,26 +15,24 @@ import { useColors } from '../../theme/ThemeProvider';
 const SOCKET_URL = 'https://campus-backend-production-2dbb.up.railway.app';
 
 interface GroupMessage {
-  id: string;
-  senderId: string;
-  senderHandle: string;
-  text: string;
-  imageUrl?: string | null;
-  createdAt: string;
+  id: string; senderId: string; senderHandle: string;
+  text: string; imageUrl?: string | null; createdAt: string;
 }
 
 type RootStackParamList = {
   GroupChat: { groupId: string; groupName: string; groupIcon: string };
 };
 
-const formatTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const softShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+};
 
+const formatTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  const today = new Date();
+  const d = new Date(iso); const today = new Date();
   if (d.toDateString() === today.toDateString()) return 'Today';
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
   return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 };
@@ -50,7 +48,6 @@ const ImageViewerModal = ({ visible, uri, onClose }: { visible: boolean; uri: st
     </Modal>
   );
 };
-
 const iv = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
   image: { width: '100%', height: '80%' },
@@ -58,25 +55,35 @@ const iv = StyleSheet.create({
   closeText: { color: '#fff', fontSize: 18, fontWeight: '800' },
 });
 
-const GroupMessageBubble = ({ message, isOwn, onImagePress }: { message: GroupMessage; isOwn: boolean; onImagePress: (uri: string) => void }) => {
+const GroupMessageBubble = ({ message, isOwn, onImagePress }: {
+  message: GroupMessage; isOwn: boolean; onImagePress: (uri: string) => void;
+}) => {
   const Colors = useColors();
   const s = StyleSheet.create({
-    bubbleRow: { marginVertical: 3, flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+    bubbleRow: { marginVertical: 2, flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
     bubbleRowOwn: { justifyContent: 'flex-end' },
     bubbleRowOther: { justifyContent: 'flex-start' },
-    msgAvatar: { width: 28, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    msgAvatarText: { fontSize: 11, fontWeight: '700', color: '#fff' },
-    bubble: { maxWidth: '72%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
-    bubbleWithImage: { padding: 6 },
-    bubbleImage: { width: 200, height: 200, borderRadius: 12 },
+
+    // Small gradient avatar for other senders
+    msgAvatar: { width: 26, height: 26, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+    msgAvatarText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+
+    bubble: { maxWidth: '72%', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 18 },
+    bubbleWithImage: { padding: 5 },
+    bubbleImage: { width: 200, height: 200, borderRadius: 14 },
+
+    // Own — accent fill
     bubbleOwn: { backgroundColor: Colors.accent, borderBottomRightRadius: 4 },
-    bubbleOther: { backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderBottomLeftRadius: 4 },
-    senderName: { fontSize: 11, fontWeight: '700', color: Colors.accent, marginBottom: 3 },
-    bubbleText: { fontSize: 14, color: Colors.textMuted, lineHeight: 20 },
+    // Other — card bg, shadow instead of border
+    bubbleOther: { backgroundColor: Colors.card, borderBottomLeftRadius: 4, ...softShadow },
+
+    senderName: { fontSize: 10.5, fontWeight: '700', color: Colors.accent, marginBottom: 3 },
+    bubbleText: { fontSize: 13.5, color: Colors.text, lineHeight: 19 },
     bubbleTextOwn: { color: '#fff' },
-    bubbleTime: { fontSize: 10, color: Colors.textDim, marginTop: 4, textAlign: 'right' },
+    bubbleTime: { fontSize: 10, color: Colors.textDim, marginTop: 3, textAlign: 'right' },
     bubbleTimeOwn: { color: 'rgba(255,255,255,0.6)' },
   });
+
   return (
     <View style={[s.bubbleRow, isOwn ? s.bubbleRowOwn : s.bubbleRowOther]}>
       {!isOwn && (
@@ -91,7 +98,11 @@ const GroupMessageBubble = ({ message, isOwn, onImagePress }: { message: GroupMe
             <Image source={{ uri: message.imageUrl }} style={s.bubbleImage} resizeMode="cover" />
           </TouchableOpacity>
         )}
-        {!!message.text && <Text style={[s.bubbleText, isOwn && s.bubbleTextOwn, message.imageUrl && { marginTop: 6 }]}>{message.text}</Text>}
+        {!!message.text && (
+          <Text style={[s.bubbleText, isOwn && s.bubbleTextOwn, message.imageUrl && { marginTop: 6 }]}>
+            {message.text}
+          </Text>
+        )}
         <Text style={[s.bubbleTime, isOwn && s.bubbleTimeOwn]}>{formatTime(message.createdAt)}</Text>
       </View>
     </View>
@@ -116,27 +127,37 @@ export const GroupChatScreen = () => {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+
+    // Header — hairline divider, no heavy border
+    header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
     backBtn: { padding: 4 },
     backText: { color: Colors.text, fontSize: 22 },
-    headerIcon: { fontSize: 22 },
+    headerIconWrap: { width: 34, height: 34, borderRadius: 11, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', ...softShadow },
+    headerIcon: { fontSize: 18 },
     headerMeta: { flex: 1 },
-    headerTitle: { fontWeight: '800', fontSize: 15, color: Colors.text },
+    headerTitle: { fontWeight: '800', fontSize: 14.5, color: Colors.text },
+
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     messageList: { paddingHorizontal: 14, paddingVertical: 10, paddingBottom: 20 },
     empty: { textAlign: 'center', color: Colors.textMuted, marginTop: 60, fontSize: 13 },
-    dateSeparator: { alignItems: 'center', marginVertical: 12 },
-    dateSeparatorText: { fontSize: 11, color: Colors.textDim, fontWeight: '600', backgroundColor: Colors.card, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
+
+    // Date separator — pill with shadow
+    dateSeparator: { alignItems: 'center', marginVertical: 10 },
+    dateSeparatorText: { fontSize: 11, color: Colors.textDim, fontWeight: '600', backgroundColor: Colors.card, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, ...softShadow },
+
+    // Pending image preview
     pendingImageWrap: { position: 'relative', marginHorizontal: 14, marginBottom: 8 },
-    pendingImagePreview: { width: 100, height: 100, borderRadius: 12 },
-    removePendingImage: { position: 'absolute', top: -6, right: -6, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
-    inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.bg },
-    attachBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-    attachIcon: { fontSize: 16 },
-    input: { flex: 1, backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, paddingVertical: 10, color: Colors.text, fontSize: 14, maxHeight: 100 },
-    sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+    pendingImagePreview: { width: 90, height: 90, borderRadius: 14 },
+    removePendingImage: { position: 'absolute', top: -6, right: -6, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 12, width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+
+    // Input bar — card bg with shadow, no top border
+    inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 7, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: Colors.card, ...softShadow },
+    attachBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
+    attachIcon: { fontSize: 15 },
+    input: { flex: 1, backgroundColor: Colors.bg, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, color: Colors.text, fontSize: 13.5, maxHeight: 100 },
+    sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', ...softShadow },
     sendBtnDisabled: { backgroundColor: Colors.accentDim },
-    sendIcon: { color: '#fff', fontSize: 16 },
+    sendIcon: { color: '#fff', fontSize: 15 },
   });
 
   useEffect(() => {
@@ -190,7 +211,11 @@ export const GroupChatScreen = () => {
     const showDate = !prev || formatDate(item.createdAt) !== formatDate(prev.createdAt);
     return (
       <>
-        {showDate && <View style={styles.dateSeparator}><Text style={styles.dateSeparatorText}>{formatDate(item.createdAt)}</Text></View>}
+        {showDate && (
+          <View style={styles.dateSeparator}>
+            <Text style={styles.dateSeparatorText}>{formatDate(item.createdAt)}</Text>
+          </View>
+        )}
         <GroupMessageBubble message={item} isOwn={item.senderId === userId} onImagePress={setViewerImage} />
       </>
     );
@@ -199,10 +224,17 @@ export const GroupChatScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}><Text style={styles.backText}>←</Text></TouchableOpacity>
-        <Text style={styles.headerIcon}>{groupIcon}</Text>
-        <View style={styles.headerMeta}><Text style={styles.headerTitle} numberOfLines={1}>{groupName}</Text></View>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerIconWrap}>
+          <Text style={styles.headerIcon}>{groupIcon}</Text>
+        </View>
+        <View style={styles.headerMeta}>
+          <Text style={styles.headerTitle} numberOfLines={1}>{groupName}</Text>
+        </View>
       </View>
+
       {loading ? (
         <View style={styles.loadingWrap}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
@@ -217,24 +249,43 @@ export const GroupChatScreen = () => {
           ListEmptyComponent={<Text style={styles.empty}>No messages yet. Say hi! 👋</Text>}
         />
       )}
+
       {pendingImage && (
         <View style={styles.pendingImageWrap}>
           <Image source={{ uri: pendingImage }} style={styles.pendingImagePreview} resizeMode="cover" />
           <TouchableOpacity style={styles.removePendingImage} onPress={() => setPendingImage(null)}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>✕</Text>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 11 }}>✕</Text>
           </TouchableOpacity>
         </View>
       )}
+
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage}><Text style={styles.attachIcon}>🖼️</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.attachBtn} onPress={handleCamera}><Text style={styles.attachIcon}>📷</Text></TouchableOpacity>
-          <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="Type a message..." placeholderTextColor={Colors.textDim} multiline maxLength={1000} />
-          <TouchableOpacity style={[styles.sendBtn, !input.trim() && !pendingImage && styles.sendBtnDisabled]} onPress={handleSend} disabled={!input.trim() && !pendingImage}>
+          <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage}>
+            <Text style={styles.attachIcon}>🖼️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.attachBtn} onPress={handleCamera}>
+            <Text style={styles.attachIcon}>📷</Text>
+          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Type a message..."
+            placeholderTextColor={Colors.textDim}
+            multiline
+            maxLength={1000}
+          />
+          <TouchableOpacity
+            style={[styles.sendBtn, !input.trim() && !pendingImage && styles.sendBtnDisabled]}
+            onPress={handleSend}
+            disabled={!input.trim() && !pendingImage}
+          >
             <Text style={styles.sendIcon}>➤</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
       <ImageViewerModal visible={!!viewerImage} uri={viewerImage} onClose={() => setViewerImage(null)} />
     </SafeAreaView>
   );

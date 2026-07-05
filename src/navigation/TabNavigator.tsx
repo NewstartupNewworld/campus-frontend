@@ -17,6 +17,26 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { CollegeAccessScreen } from '../screens/profile/CollegeAccessScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
 
+// Academic screens
+import AcademicScreen from '../screens/academic/AcademicScreen';
+import NotesScreen from '../screens/academic/NotesScreen';
+import DoubtScreen from '../screens/academic/DoubtScreen';
+import StudyPlannerScreen from '../screens/academic/StudyPlannerScreen';
+import PYQScreen from '../screens/academic/PYQScreen';
+import SeniorGuideScreen from '../screens/academic/SeniorGuideScreen';
+import SetCourseScreen from '../screens/academic/SetCourseScreen';
+
+// Career screens
+import CareerScreen from '../screens/career/CareerScreen';
+import InternshipsScreen from '../screens/career/InternshipsScreen';
+import GigsScreen from '../screens/career/GigsScreen';
+import ResumeAIScreen from '../screens/career/ResumeAIScreen';
+
+// Events screens
+import EventsScreen from '../screens/events/EventsScreen';
+import EventDetailScreen from '../screens/events/EventDetailScreen';
+import CreateEventScreen from '../screens/events/CreateEventScreen';
+
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const MarketStack = createNativeStackNavigator();
@@ -24,6 +44,9 @@ const ChatStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
 const BuzzStack = createNativeStackNavigator();
 const SOSStack = createNativeStackNavigator();
+const AcademicStack = createNativeStackNavigator();
+const CareerStack = createNativeStackNavigator();
+const EventsStack = createNativeStackNavigator();
 
 function HomeStackScreen() {
   return (
@@ -80,7 +103,45 @@ function SOSStackScreen() {
   );
 }
 
-// SOS Floating Button
+// ─── ACADEMIC STACK ───────────────────────────────────────────────────────────
+function AcademicStackScreen() {
+  return (
+    <AcademicStack.Navigator screenOptions={{ headerShown: false }}>
+      <AcademicStack.Screen name="AcademicMain" component={AcademicScreen} />
+      <AcademicStack.Screen name="Notes" component={NotesScreen} />
+      <AcademicStack.Screen name="Doubt" component={DoubtScreen} />
+      <AcademicStack.Screen name="StudyPlanner" component={StudyPlannerScreen} />
+      <AcademicStack.Screen name="PYQ" component={PYQScreen} />
+      <AcademicStack.Screen name="SeniorGuide" component={SeniorGuideScreen} />
+      <AcademicStack.Screen name="SetCourse" component={SetCourseScreen} />
+    </AcademicStack.Navigator>
+  );
+}
+
+// ─── CAREER STACK ─────────────────────────────────────────────────────────────
+function CareerStackScreen() {
+  return (
+    <CareerStack.Navigator screenOptions={{ headerShown: false }}>
+      <CareerStack.Screen name="CareerMain" component={CareerScreen} />
+      <CareerStack.Screen name="Internships" component={InternshipsScreen} />
+      <CareerStack.Screen name="Gigs" component={GigsScreen} />
+      <CareerStack.Screen name="ResumeAI" component={ResumeAIScreen} />
+    </CareerStack.Navigator>
+  );
+}
+
+// ─── EVENTS STACK ─────────────────────────────────────────────────────────────
+function EventsStackScreen() {
+  return (
+    <EventsStack.Navigator screenOptions={{ headerShown: false }}>
+      <EventsStack.Screen name="EventsMain" component={EventsScreen} />
+      <EventsStack.Screen name="EventDetail" component={EventDetailScreen} />
+      <EventsStack.Screen name="CreateEvent" component={CreateEventScreen} />
+    </EventsStack.Navigator>
+  );
+}
+
+// ─── SOS FLOATING BUTTON ─────────────────────────────────────────────────────
 const SOSButton = () => {
   const navigation = useNavigation();
   return (
@@ -115,15 +176,19 @@ const sos = StyleSheet.create({
   icon: { fontSize: 24 },
 });
 
+// ─── TAB NAVIGATOR ────────────────────────────────────────────────────────────
 export function TabNavigator() {
   const Colors = useColors();
 
   const TAB_ICONS: Record<string, { icon: string; label: string }> = {
-    Home: { icon: '🏠', label: 'Home' },
+    Home:        { icon: '🏠', label: 'Home' },
     Marketplace: { icon: '🛍️', label: 'Market' },
-    Buzz: { icon: '⚡', label: 'Buzz' },
-    Chats: { icon: '💬', label: 'Chats' },
-    Profile: { icon: '👤', label: 'Profile' },
+    Buzz:        { icon: '⚡', label: 'Buzz' },
+    Academic:    { icon: '🎓', label: 'Study' },
+    Career:      { icon: '🚀', label: 'Career' },
+    Events:      { icon: '📅', label: 'Events' },
+    Chats:       { icon: '💬', label: 'Chats' },
+    Profile:     { icon: '👤', label: 'Profile' },
   };
 
   return (
@@ -143,7 +208,7 @@ export function TabNavigator() {
           tabBarInactiveTintColor: Colors.textDim,
           tabBarLabel: ({ focused }) => (
             <Text style={{
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: '700',
               color: focused ? Colors.accent : Colors.textDim,
               marginTop: 2,
@@ -155,23 +220,26 @@ export function TabNavigator() {
             <View style={{
               alignItems: 'center',
               justifyContent: 'center',
-              width: 44,
-              height: 32,
-              borderRadius: 12,
+              width: 36,
+              height: 28,
+              borderRadius: 8,
               backgroundColor: focused ? Colors.accent + '20' : 'transparent',
             }}>
-              <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.4 }}>
+              <Text style={{ fontSize: 16, opacity: focused ? 1 : 0.4 }}>
                 {TAB_ICONS[route.name]?.icon ?? '●'}
               </Text>
             </View>
           ),
         })}
       >
-        <Tab.Screen name="Home" component={HomeStackScreen} />
+        <Tab.Screen name="Home"        component={HomeStackScreen} />
         <Tab.Screen name="Marketplace" component={MarketplaceStack} />
-        <Tab.Screen name="Buzz" component={BuzzStackScreen} />
-        <Tab.Screen name="Chats" component={ChatsStack} />
-        <Tab.Screen name="Profile" component={ProfileStackScreen} />
+        <Tab.Screen name="Buzz"        component={BuzzStackScreen} />
+        <Tab.Screen name="Academic"    component={AcademicStackScreen} />
+        <Tab.Screen name="Career"      component={CareerStackScreen} />
+        <Tab.Screen name="Events"      component={EventsStackScreen} />
+        <Tab.Screen name="Chats"       component={ChatsStack} />
+        <Tab.Screen name="Profile"     component={ProfileStackScreen} />
       </Tab.Navigator>
 
       {/* SOS Floating Button */}

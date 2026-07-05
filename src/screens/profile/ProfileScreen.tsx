@@ -37,48 +37,20 @@ interface UserProfile {
 }
 
 interface Badge {
-  id: string;
-  icon: string;
-  label: string;
-  description: string;
-  earned: boolean;
-  color: string;
+  id: string; icon: string; label: string; description: string; earned: boolean; color: string;
 }
-
 interface ListingPreview {
-  id: string;
-  title: string;
-  price: number;
-  status: 'active' | 'sold' | 'expired';
-  image: string;
+  id: string; title: string; price: number; status: 'active' | 'sold' | 'expired'; image: string;
 }
-
 interface Rating {
-  id: string;
-  fromHandle: string;
-  score: number;
-  comment: string;
-  listingTitle: string;
-  createdAt: string;
+  id: string; fromHandle: string; score: number; comment: string; listingTitle: string; createdAt: string;
 }
 
 const MOCK_PROFILE: UserProfile = {
-  id: 'u1',
-  anonymousHandle: 'CampusOwl#42',
-  college: 'IIT Kharagpur',
-  department: 'Computer Science',
-  year: 3,
-  verified: true,
-  trustScore: 78,
+  id: 'u1', anonymousHandle: 'CampusOwl#42', college: 'IIT Kharagpur',
+  department: 'Computer Science', year: 3, verified: true, trustScore: 78,
   joinedAt: '2024-08-01T00:00:00.000Z',
-  stats: {
-    listingsPosted: 8,
-    successfulSales: 5,
-    buzzPosts: 23,
-    sosResponses: 2,
-    ratingsReceived: 5,
-    avgRating: 4.4,
-  },
+  stats: { listingsPosted: 8, successfulSales: 5, buzzPosts: 23, sosResponses: 2, ratingsReceived: 5, avgRating: 4.4 },
   badges: [
     { id: 'b1', icon: '✓', label: 'Verified Student', description: 'College email verified', earned: true, color: '#3DDC84' },
     { id: 'b2', icon: '🛍️', label: 'First Sale', description: 'Completed first transaction', earned: true, color: '#5B8DEF' },
@@ -96,6 +68,15 @@ const MOCK_PROFILE: UserProfile = {
     { id: 'r1', fromHandle: 'NightOwl#77', score: 5, comment: 'Super smooth transaction!', listingTitle: 'Engineering Maths Vol 3', createdAt: new Date(Date.now() - 86400000).toISOString() },
     { id: 'r2', fromHandle: 'GhostCoder#99', score: 4, comment: 'Good seller, slight delay but all good.', listingTitle: 'Python Crash Course', createdAt: new Date(Date.now() - 432000000).toISOString() },
   ],
+};
+
+const softShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+};
+const cardShadow = {
+  shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
 };
 
 const timeAgo = (iso: string) => {
@@ -117,67 +98,65 @@ const getTrustLabel = (score: number, C: any) => {
 const stars = (score: number) =>
   Array.from({ length: 5 }, (_, i) => i < Math.round(score) ? '★' : '☆').join('');
 
+// Compact trust ring — smaller, no double ring
 const TrustRing = ({ score }: { score: number }) => {
   const Colors = useColors();
   const { label, color } = getTrustLabel(score, Colors);
   const tr = StyleSheet.create({
-    wrap: { alignItems: 'center', gap: 10 },
-    outerRing: { width: 110, height: 110, borderRadius: 55, borderWidth: 6, alignItems: 'center', justifyContent: 'center' },
-    innerRing: { width: 90, height: 90, borderRadius: 45, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
-    score: { fontSize: 28, fontWeight: '900' },
-    outOf: { fontSize: 11, color: Colors.textMuted },
-    labelWrap: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 4 },
-    labelText: { fontSize: 12, fontWeight: '800' },
+    wrap: { alignItems: 'center', gap: 6 },
+    ring: { width: 88, height: 88, borderRadius: 44, borderWidth: 4, borderColor: color, alignItems: 'center', justifyContent: 'center', backgroundColor: color + '12' },
+    score: { fontSize: 26, fontWeight: '900', color },
+    outOf: { fontSize: 10, color: Colors.textMuted },
+    labelWrap: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 3, backgroundColor: color + '22' },
+    labelText: { fontSize: 11, fontWeight: '800', color },
   });
   return (
     <View style={tr.wrap}>
-      <View style={[tr.outerRing, { borderColor: color + '33' }]}>
-        <View style={[tr.innerRing, { borderColor: color }]}>
-          <Text style={[tr.score, { color }]}>{score}</Text>
-          <Text style={tr.outOf}>/100</Text>
-        </View>
+      <View style={tr.ring}>
+        <Text style={tr.score}>{score}</Text>
+        <Text style={tr.outOf}>/100</Text>
       </View>
-      <View style={[tr.labelWrap, { backgroundColor: color + '22', borderColor: color + '55' }]}>
-        <Text style={[tr.labelText, { color }]}>{label}</Text>
+      <View style={tr.labelWrap}>
+        <Text style={tr.labelText}>{label}</Text>
       </View>
     </View>
   );
 };
 
+// Compact badge — shadow, no border
 const BadgeCard = ({ badge }: { badge: Badge }) => {
   const Colors = useColors();
   const bc = StyleSheet.create({
-    card: { width: '30%', backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', padding: 10, gap: 4 },
-    cardLocked: { borderColor: Colors.border, opacity: 0.5 },
-    iconWrap: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-    icon: { fontSize: 20 },
-    label: { fontSize: 11, fontWeight: '800', color: Colors.text, textAlign: 'center' },
-    labelLocked: { color: Colors.textDim },
+    card: { width: '30%', backgroundColor: Colors.card, borderRadius: 14, alignItems: 'center', padding: 10, gap: 4, ...softShadow, opacity: badge.earned ? 1 : 0.45 },
+    iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    icon: { fontSize: 19 },
+    label: { fontSize: 11, fontWeight: '800', color: badge.earned ? Colors.text : Colors.textDim, textAlign: 'center' },
     desc: { fontSize: 9, color: Colors.textDim, textAlign: 'center', lineHeight: 13 },
     lock: { fontSize: 10 },
   });
   return (
-    <View style={[bc.card, !badge.earned && bc.cardLocked]}>
+    <View style={bc.card}>
       <View style={[bc.iconWrap, { backgroundColor: badge.color + (badge.earned ? '22' : '11') }]}>
-        <Text style={[bc.icon, { opacity: badge.earned ? 1 : 0.3 }]}>{badge.icon}</Text>
+        <Text style={[bc.icon, { opacity: badge.earned ? 1 : 0.4 }]}>{badge.icon}</Text>
       </View>
-      <Text style={[bc.label, !badge.earned && bc.labelLocked]}>{badge.label}</Text>
+      <Text style={bc.label}>{badge.label}</Text>
       <Text style={bc.desc} numberOfLines={2}>{badge.description}</Text>
       {!badge.earned && <Text style={bc.lock}>🔒</Text>}
     </View>
   );
 };
 
+// Compact rating card — shadow, no border
 const RatingCard = ({ rating }: { rating: Rating }) => {
   const Colors = useColors();
   const rc = StyleSheet.create({
-    card: { backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, marginBottom: 10 },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    handle: { fontWeight: '700', fontSize: 13, color: Colors.accent, flex: 1 },
-    stars: { fontSize: 13, color: Colors.warn },
+    card: { backgroundColor: Colors.card, borderRadius: 14, padding: 13, marginBottom: 9, ...softShadow },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
+    handle: { fontWeight: '700', fontSize: 12.5, color: Colors.accent, flex: 1 },
+    stars: { fontSize: 12, color: Colors.warn },
     time: { fontSize: 10, color: Colors.textDim },
-    listing: { fontSize: 11, color: Colors.textMuted, marginBottom: 6 },
-    comment: { fontSize: 13, color: Colors.text, lineHeight: 19 },
+    listing: { fontSize: 11, color: Colors.textMuted, marginBottom: 5 },
+    comment: { fontSize: 13, color: Colors.text, lineHeight: 18 },
   });
   return (
     <View style={rc.card}>
@@ -192,27 +171,28 @@ const RatingCard = ({ rating }: { rating: Rating }) => {
   );
 };
 
+// Listing row — dot separator instead of bottom border line
 const ListingRow = ({ listing }: { listing: ListingPreview }) => {
   const Colors = useColors();
   const statusColor = listing.status === 'sold' ? Colors.success : listing.status === 'active' ? Colors.accent : Colors.textDim;
   const lr = StyleSheet.create({
-    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
-    thumb: { width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
+    thumb: { width: 38, height: 38, borderRadius: 10, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', ...softShadow },
     info: { flex: 1 },
     title: { fontWeight: '700', fontSize: 13, color: Colors.text },
-    price: { fontSize: 12, color: Colors.accent, fontWeight: '700', marginTop: 2 },
-    statusBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
-    statusText: { fontSize: 11, fontWeight: '700' },
+    price: { fontSize: 12, color: Colors.accent, fontWeight: '700', marginTop: 1 },
+    statusBadge: { borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: statusColor + '22' },
+    statusText: { fontSize: 11, fontWeight: '700', color: statusColor },
   });
   return (
     <View style={lr.row}>
-      <View style={lr.thumb}><Text style={{ fontSize: 20 }}>📦</Text></View>
+      <View style={lr.thumb}><Text style={{ fontSize: 18 }}>📦</Text></View>
       <View style={lr.info}>
         <Text style={lr.title} numberOfLines={1}>{listing.title}</Text>
         <Text style={lr.price}>₹{listing.price}</Text>
       </View>
-      <View style={[lr.statusBadge, { backgroundColor: statusColor + '22', borderColor: statusColor + '55' }]}>
-        <Text style={[lr.statusText, { color: statusColor }]}>{listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}</Text>
+      <View style={lr.statusBadge}>
+        <Text style={lr.statusText}>{listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}</Text>
       </View>
     </View>
   );
@@ -225,15 +205,15 @@ const SettingsSection = ({ onLogout, onCollegeAccess }: { onLogout: () => void; 
   const [anonymousMode, setAnonymousMode] = useState(true);
 
   const ss = StyleSheet.create({
-    collegeAccessBtn: { marginTop: 12, backgroundColor: Colors.accent + '18', borderRadius: 12, borderWidth: 1, borderColor: Colors.accent + '44', paddingVertical: 13, alignItems: 'center' },
-    collegeAccessText: { color: Colors.accent, fontWeight: '800', fontSize: 14 },
     wrap: { paddingHorizontal: 16, marginBottom: 20 },
-    title: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 12 },
-    card: { backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
+    title: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 10 },
+    card: { backgroundColor: Colors.card, borderRadius: 16, overflow: 'hidden', ...softShadow },
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13 },
     rowLabel: { fontSize: 14, color: Colors.text, fontWeight: '600' },
-    divider: { height: 1, backgroundColor: Colors.border },
-    logoutBtn: { marginTop: 12, backgroundColor: Colors.danger + '18', borderRadius: 12, borderWidth: 1, borderColor: Colors.danger + '44', paddingVertical: 13, alignItems: 'center' },
+    divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 16 },
+    collegeAccessBtn: { marginTop: 10, backgroundColor: Colors.accent + '18', borderRadius: 14, paddingVertical: 13, alignItems: 'center', ...softShadow },
+    collegeAccessText: { color: Colors.accent, fontWeight: '800', fontSize: 14 },
+    logoutBtn: { marginTop: 10, backgroundColor: Colors.danger + '18', borderRadius: 14, paddingVertical: 13, alignItems: 'center', ...softShadow },
     logoutText: { color: Colors.danger, fontWeight: '800', fontSize: 14 },
   });
 
@@ -278,59 +258,72 @@ export const ProfileScreen = () => {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
     scroll: { paddingBottom: 40 },
-    profileHeader: { flexDirection: 'row', gap: 14, padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border, position: 'relative' },
-    bellBtn: { position: 'absolute', top: 16, right: 16, width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-    bellIcon: { fontSize: 16 },
-    bellBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: Colors.danger, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+
+    // Header — tighter, no bottom border, uses hairline divider
+    profileHeader: { flexDirection: 'row', gap: 12, padding: 14, paddingBottom: 16 },
+    bellBtn: { position: 'absolute', top: 14, right: 14, width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', zIndex: 10, ...softShadow },
+    bellIcon: { fontSize: 15 },
+    bellBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: Colors.danger, borderRadius: 8, minWidth: 15, height: 15, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
     bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
     avatarWrap: { position: 'relative' },
-    avatarImage: { width: 68, height: 68, borderRadius: 34 },
-    avatar: { width: 68, height: 68, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    avatarText: { fontSize: 24, fontWeight: '900', color: '#fff' },
-    avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: Colors.card, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
-    profileInfo: { flex: 1, justifyContent: 'center', gap: 3 },
-    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-    handle: { fontSize: 18, fontWeight: '900', color: Colors.text },
-    editNameBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    realName: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
-    editNameIcon: { fontSize: 11 },
-    verifiedBadge: { backgroundColor: Colors.success + '22', borderRadius: 6, borderWidth: 1, borderColor: Colors.success + '55', paddingHorizontal: 7, paddingVertical: 2 },
+    avatarImage: { width: 64, height: 64, borderRadius: 20 },
+    avatar: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { fontSize: 22, fontWeight: '900', color: '#fff' },
+    avatarEditBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: Colors.card, borderRadius: 9, width: 18, height: 18, alignItems: 'center', justifyContent: 'center', ...softShadow },
+    profileInfo: { flex: 1, justifyContent: 'center', gap: 2 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
+    handle: { fontSize: 17, fontWeight: '900', color: Colors.text },
+    editNameBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    realName: { fontSize: 12.5, color: Colors.textMuted, fontWeight: '600' },
+    editNameIcon: { fontSize: 10 },
+    verifiedBadge: { backgroundColor: Colors.success + '22', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
     verifiedText: { fontSize: 10, fontWeight: '700', color: Colors.success },
-    college: { fontSize: 13, color: Colors.accent, fontWeight: '700' },
-    dept: { fontSize: 12, color: Colors.textMuted },
-    joined: { fontSize: 11, color: Colors.textDim },
-    trustCard: { flexDirection: 'row', gap: 16, alignItems: 'center', margin: 16, padding: 18, backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
+    college: { fontSize: 12.5, color: Colors.accent, fontWeight: '700' },
+    dept: { fontSize: 11.5, color: Colors.textMuted },
+    joined: { fontSize: 10.5, color: Colors.textDim },
+    dividerLine: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 16, marginBottom: 10 },
+
+    // Trust card — shadow, no border
+    trustCard: { flexDirection: 'row', gap: 14, alignItems: 'center', marginHorizontal: 16, marginBottom: 12, padding: 16, backgroundColor: Colors.card, borderRadius: 18, ...cardShadow },
     trustInfo: { flex: 1 },
-    trustTitle: { fontWeight: '800', fontSize: 15, color: Colors.text, marginBottom: 4 },
-    trustDesc: { fontSize: 11, color: Colors.textMuted, lineHeight: 16, marginBottom: 10 },
+    trustTitle: { fontWeight: '800', fontSize: 14, color: Colors.text, marginBottom: 3 },
+    trustDesc: { fontSize: 11, color: Colors.textMuted, lineHeight: 15, marginBottom: 8 },
     trustBreakdown: { gap: 5 },
     trustItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    trustItemDot: { fontSize: 12, fontWeight: '800', width: 14 },
+    trustItemDot: { fontSize: 11, fontWeight: '800', width: 14 },
     trustItemLabel: { fontSize: 11, color: Colors.textMuted, flex: 1 },
     trustItemVal: { fontSize: 11, fontWeight: '700', color: Colors.text },
-    statsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 12 },
-    statCard: { flex: 1, backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', padding: 12, gap: 4 },
-    statIcon: { fontSize: 20 },
-    statValue: { fontSize: 18, fontWeight: '900', color: Colors.text },
-    statLabel: { fontSize: 10, color: Colors.textMuted, textAlign: 'center' },
-    ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 16, backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12 },
-    ratingBarLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-    ratingBarStars: { fontSize: 14, color: Colors.warn },
-    ratingBarVal: { fontSize: 12, color: Colors.text, fontWeight: '700' },
-    tabs: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 14, backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 4 },
-    tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 9 },
+
+    // Compact stat cards — 4 in a row, shadow, no border
+    statsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 10 },
+    statCard: { flex: 1, backgroundColor: Colors.card, borderRadius: 14, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, gap: 2, ...softShadow },
+    statIcon: { fontSize: 17 },
+    statValue: { fontSize: 17, fontWeight: '900', color: Colors.text },
+    statLabel: { fontSize: 9.5, color: Colors.textMuted, textAlign: 'center' },
+
+    // Rating bar — shadow, no border
+    ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 12, backgroundColor: Colors.card, borderRadius: 14, padding: 11, ...softShadow },
+    ratingBarLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600', flex: 1 },
+    ratingBarStars: { fontSize: 13, color: Colors.warn },
+    ratingBarVal: { fontSize: 11.5, color: Colors.text, fontWeight: '700' },
+
+    // Tabs — shadow, no border
+    tabs: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: Colors.card, borderRadius: 14, padding: 4, ...softShadow },
+    tab: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 10 },
     tabActive: { backgroundColor: Colors.accent },
     tabText: { fontSize: 13, fontWeight: '700', color: Colors.textMuted },
     tabTextActive: { color: '#fff' },
     tabContent: { paddingHorizontal: 16, marginBottom: 20 },
     badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
     empty: { textAlign: 'center', color: Colors.textMuted, paddingVertical: 30, fontSize: 13 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '85%', borderWidth: 1, borderColor: Colors.border },
-    modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 16 },
-    modalInput: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, color: Colors.text, fontSize: 16, marginBottom: 16 },
+
+    // Edit name modal — shadow, no border
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
+    modalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '85%', ...cardShadow },
+    modalTitle: { fontSize: 17, fontWeight: '800', color: Colors.text, marginBottom: 14 },
+    modalInput: { backgroundColor: Colors.bg, borderRadius: 12, padding: 13, color: Colors.text, fontSize: 15, marginBottom: 14 },
     modalBtns: { flexDirection: 'row', gap: 12 },
-    modalCancel: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+    modalCancel: { flex: 1, backgroundColor: Colors.bg, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
     modalCancelText: { color: Colors.text, fontWeight: '700' },
     modalSave: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
     modalSaveText: { color: '#fff', fontWeight: '800' },
@@ -344,9 +337,7 @@ export const ProfileScreen = () => {
         const savedPic = await AsyncStorage.getItem('profilePic');
         if (savedPic) setProfilePic(savedPic);
         if (token) {
-          const response = await fetch(`${API_URL}/api/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const response = await fetch(`${API_URL}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } });
           if (response.ok) {
             const data = await response.json();
             setProfile({
@@ -405,9 +396,7 @@ export const ProfileScreen = () => {
     const loadUnread = async () => {
       try {
         const token = await AsyncStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/notifications`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         if (response.ok) setUnreadCount(data.unreadCount || 0);
       } catch (e) {}
@@ -418,24 +407,14 @@ export const ProfileScreen = () => {
   const handlePickProfilePic = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please allow access to your photo library.');
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-      });
+      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to your photo library.'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 });
       if (!result.canceled && result.assets[0]) {
         const uri = result.assets[0].uri;
         setProfilePic(uri);
         await AsyncStorage.setItem('profilePic', uri);
       }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to pick image.');
-    }
+    } catch (err) { Alert.alert('Error', 'Failed to pick image.'); }
   };
 
   const handleSaveName = async () => {
@@ -448,33 +427,22 @@ export const ProfileScreen = () => {
         setProfile(prev => prev ? { ...prev, studentName: editNameText } : prev);
       }
       setEditNameModal(false);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to save name.');
-    }
+    } catch (e) { Alert.alert('Error', 'Failed to save name.'); }
   };
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out', style: 'destructive', onPress: async () => {
-          await AsyncStorage.removeItem('token');
-          await AsyncStorage.removeItem('user');
-          await AsyncStorage.removeItem('profilePic');
-          navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-        }
-      },
+      { text: 'Log Out', style: 'destructive', onPress: async () => {
+        await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('user');
+        await AsyncStorage.removeItem('profilePic');
+        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+      }},
     ]);
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Colors.accent} style={{ marginTop: 80 }} />
-      </SafeAreaView>
-    );
-  }
-
+  if (loading) return <SafeAreaView style={styles.container}><ActivityIndicator color={Colors.accent} style={{ marginTop: 80 }} /></SafeAreaView>;
   if (!profile) return null;
 
   const { stats, badges, recentListings, recentRatings } = profile;
@@ -482,6 +450,8 @@ export const ProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+
+        {/* Profile header */}
         <View style={styles.profileHeader}>
           <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications' as never)}>
             <Text style={styles.bellIcon}>🔔</Text>
@@ -499,9 +469,7 @@ export const ProfileScreen = () => {
                 <Text style={styles.avatarText}>{profile.anonymousHandle.slice(0, 2).toUpperCase()}</Text>
               </LinearGradient>
             )}
-            <View style={styles.avatarEditBadge}>
-              <Text style={{ fontSize: 10 }}>📷</Text>
-            </View>
+            <View style={styles.avatarEditBadge}><Text style={{ fontSize: 9 }}>📷</Text></View>
           </TouchableOpacity>
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
@@ -524,14 +492,17 @@ export const ProfileScreen = () => {
           </View>
         </View>
 
+        <View style={styles.dividerLine} />
+
+        {/* Trust score */}
         <View style={styles.trustCard}>
           <TrustRing score={profile.trustScore} />
           <View style={styles.trustInfo}>
             <Text style={styles.trustTitle}>Trust Score</Text>
-            <Text style={styles.trustDesc}>Based on your sales, ratings, activity, and SOS responses.</Text>
+            <Text style={styles.trustDesc}>Based on sales, ratings, activity, and SOS responses.</Text>
             <View style={styles.trustBreakdown}>
               {[
-                { label: 'Sales', val: stats.successfulSales + '/10', done: stats.successfulSales >= 10 },
+                { label: 'Sales', val: `${stats.successfulSales}/10`, done: stats.successfulSales >= 10 },
                 { label: 'Avg Rating', val: `${stats.avgRating}★`, done: stats.avgRating >= 4 },
                 { label: 'Verified', val: profile.verified ? 'Yes' : 'No', done: profile.verified },
               ].map(item => (
@@ -545,12 +516,13 @@ export const ProfileScreen = () => {
           </View>
         </View>
 
+        {/* Compact stats row */}
         <View style={styles.statsRow}>
           {[
             { icon: '🛍️', value: stats.listingsPosted, label: 'Listed', tab: 'listings' },
             { icon: '✅', value: stats.successfulSales, label: 'Sold', tab: 'listings' },
             { icon: '⚡', value: stats.buzzPosts, label: 'Posts', tab: 'badges' },
-            { icon: '🚨', value: stats.sosResponses, label: 'Responses', tab: 'badges' },
+            { icon: '🚨', value: stats.sosResponses, label: 'SOS', tab: 'badges' },
           ].map(stat => (
             <TouchableOpacity key={stat.label} style={styles.statCard} onPress={() => setActiveTab(stat.tab as any)} activeOpacity={0.7}>
               <Text style={styles.statIcon}>{stat.icon}</Text>
@@ -560,12 +532,14 @@ export const ProfileScreen = () => {
           ))}
         </View>
 
+        {/* Rating bar */}
         <TouchableOpacity style={styles.ratingBar} onPress={() => setActiveTab('ratings')} activeOpacity={0.7}>
-          <Text style={styles.ratingBarLabel}>Average Rating</Text>
+          <Text style={styles.ratingBarLabel}>Avg Rating</Text>
           <Text style={styles.ratingBarStars}>{stars(stats.avgRating)}</Text>
-          <Text style={styles.ratingBarVal}>{stats.avgRating} ({stats.ratingsReceived} ratings)</Text>
+          <Text style={styles.ratingBarVal}>{stats.avgRating} ({stats.ratingsReceived})</Text>
         </TouchableOpacity>
 
+        {/* Tabs */}
         <View style={styles.tabs}>
           {(['listings', 'ratings', 'badges'] as const).map(tab => (
             <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)}>
@@ -603,14 +577,7 @@ export const ProfileScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Edit your name</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={editNameText}
-              onChangeText={setEditNameText}
-              placeholder="Your real name"
-              placeholderTextColor={Colors.textDim}
-              autoFocus
-            />
+            <TextInput style={styles.modalInput} value={editNameText} onChangeText={setEditNameText} placeholder="Your real name" placeholderTextColor={Colors.textDim} autoFocus />
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.modalCancel} onPress={() => setEditNameModal(false)}>
                 <Text style={styles.modalCancelText}>Cancel</Text>

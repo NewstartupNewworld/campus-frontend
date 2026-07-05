@@ -23,6 +23,21 @@ type RootStackParamList = {
   ChatRoom: { chatId: string; listingTitle: string };
 };
 
+const softShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.12,
+  shadowRadius: 6,
+  elevation: 3,
+};
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.18,
+  shadowRadius: 10,
+  elevation: 5,
+};
+
 export const MarketplaceScreen = () => {
   const Colors = useColors();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -41,52 +56,67 @@ export const MarketplaceScreen = () => {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-    headerTitle: { fontSize: 22, fontWeight: '900', color: Colors.text },
-    headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+
+    // Header — tighter, sell button shadowed not bordered
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+    headerTitle: { fontSize: 20, fontWeight: '900', color: Colors.text },
+    headerSub: { fontSize: 11.5, color: Colors.textMuted, marginTop: 1 },
     headerBtns: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-    filterBtn: { backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 9 },
-    filterBtnActive: { borderColor: Colors.accent, backgroundColor: Colors.accent + '15' },
+    filterBtn: { backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, ...softShadow },
+    filterBtnActive: { backgroundColor: Colors.accent + '20' },
     filterBtnText: { color: Colors.text, fontWeight: '700', fontSize: 12 },
-    sellBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 9 },
-    sellBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-    searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 12 },
-    searchIcon: { fontSize: 14, marginRight: 6 },
-    searchInput: { flex: 1, color: Colors.text, fontSize: 14, paddingVertical: 10 },
-    historyDropdown: { backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginHorizontal: 16, marginBottom: 8, padding: 10, zIndex: 10 },
+    filterBtnTextActive: { color: Colors.accent },
+    sellBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 8, ...softShadow },
+    sellBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
+
+    // Search — no border, shadow lift
+    searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.card, borderRadius: 14, marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 12, ...softShadow },
+    searchIcon: { fontSize: 13, marginRight: 6 },
+    searchInput: { flex: 1, color: Colors.text, fontSize: 13.5, paddingVertical: 10 },
+
+    // Search history dropdown — shadow, no border
+    historyDropdown: { backgroundColor: Colors.card, borderRadius: 14, marginHorizontal: 16, marginBottom: 8, padding: 10, zIndex: 10, ...softShadow },
     historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingHorizontal: 6 },
     historyTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
     historyClear: { fontSize: 11, fontWeight: '700', color: Colors.accent },
     historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 6, gap: 10 },
-    historyIcon: { fontSize: 13 },
+    historyIcon: { fontSize: 12 },
     historyText: { flex: 1, fontSize: 13, color: Colors.text },
     historyRemove: { padding: 4 },
     historyRemoveText: { fontSize: 11, color: Colors.textDim },
-    categories: { flexGrow: 0, marginBottom: 8 },
-    categoriesContent: { paddingHorizontal: 16, gap: 8 },
-    pill: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 6 },
-    pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+
+    // Category pills — no borders
+    categories: { flexGrow: 0, marginBottom: 6 },
+    categoriesContent: { paddingHorizontal: 16, gap: 7 },
+    pill: { backgroundColor: Colors.card, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 6 },
+    pillActive: { backgroundColor: Colors.accent },
     pillText: { color: Colors.textMuted, fontSize: 12, fontWeight: '700' },
     pillTextActive: { color: '#fff' },
+
+    // Grid
     row: { justifyContent: 'space-between', paddingHorizontal: 16 },
-    listContent: { paddingBottom: 20 },
+    listContent: { paddingBottom: 20, paddingTop: 2 },
+
+    // Empty state
     emptyWrap: { alignItems: 'center', marginTop: 60 },
     emptyIcon: { fontSize: 40, marginBottom: 12 },
     emptyText: { fontSize: 16, fontWeight: '700', color: Colors.text },
     emptySub: { fontSize: 13, color: Colors.textMuted, marginTop: 4 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalCard: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
+
+    // Filter modal — shadow replaces border
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+    modalCard: { backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40, ...cardShadow },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.text },
     modalClose: { fontSize: 18, color: Colors.textMuted },
     filterLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10, marginTop: 16 },
     pillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     priceRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    priceInput: { flex: 1, backgroundColor: Colors.card, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 10, color: Colors.text, fontSize: 14 },
+    priceInput: { flex: 1, backgroundColor: Colors.bg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, color: Colors.text, fontSize: 14 },
     modalBtns: { flexDirection: 'row', gap: 12, marginTop: 24 },
-    resetBtn: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+    resetBtn: { flex: 1, backgroundColor: Colors.bg, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
     resetBtnText: { color: Colors.text, fontWeight: '700' },
-    applyBtn: { flex: 2, backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+    applyBtn: { flex: 2, backgroundColor: Colors.accent, borderRadius: 14, paddingVertical: 14, alignItems: 'center', ...softShadow },
     applyBtnText: { color: '#fff', fontWeight: '800' },
   });
 
@@ -162,12 +192,17 @@ export const MarketplaceScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Campus Market</Text>
-          <Text style={styles.headerSub}>{totalCount} listings</Text>
+          <Text style={styles.headerTitle}>🛍️ Campus Market</Text>
+          <Text style={styles.headerSub}>{totalCount} listings available</Text>
         </View>
         <View style={styles.headerBtns}>
-          <TouchableOpacity style={[styles.filterBtn, activeFiltersCount > 0 && styles.filterBtnActive]} onPress={() => setShowFilters(true)}>
-            <Text style={styles.filterBtnText}>🎛 Filters{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}</Text>
+          <TouchableOpacity
+            style={[styles.filterBtn, activeFiltersCount > 0 && styles.filterBtnActive]}
+            onPress={() => setShowFilters(true)}
+          >
+            <Text style={[styles.filterBtnText, activeFiltersCount > 0 && styles.filterBtnTextActive]}>
+              🎛 {activeFiltersCount > 0 ? `Filters (${activeFiltersCount})` : 'Filter'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.sellBtn} onPress={() => navigation.navigate('CreateListing')}>
             <Text style={styles.sellBtnText}>+ Sell</Text>
@@ -177,8 +212,22 @@ export const MarketplaceScreen = () => {
 
       <View style={styles.searchWrap}>
         <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput style={styles.searchInput} value={search} onChangeText={setSearch} onFocus={() => setSearchFocused(true)} onBlur={() => setTimeout(() => setSearchFocused(false), 150)} onSubmitEditing={handleSearchSubmit} returnKeyType="search" placeholder="Search listings..." placeholderTextColor={Colors.textDim} />
-        {search.length > 0 && <TouchableOpacity onPress={() => setSearch('')}><Text style={{ color: Colors.textDim, fontSize: 16 }}>✕</Text></TouchableOpacity>}
+        <TextInput
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
+          placeholder="Search listings..."
+          placeholderTextColor={Colors.textDim}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')}>
+            <Text style={{ color: Colors.textDim, fontSize: 15 }}>✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {showHistoryDropdown && (
@@ -212,7 +261,13 @@ export const MarketplaceScreen = () => {
       ) : (
         <FlatList
           data={listings}
-          renderItem={({ item }) => <ListingCard listing={item} onPress={(l) => navigation.navigate('ListingDetail', { listing: l })} onInterested={handleInterested} />}
+          renderItem={({ item }) => (
+            <ListingCard
+              listing={item}
+              onPress={(l) => navigation.navigate('ListingDetail', { listing: l })}
+              onInterested={handleInterested}
+            />
+          )}
           keyExtractor={item => item.id}
           numColumns={2}
           columnWrapperStyle={styles.row}
