@@ -37,6 +37,10 @@ import EventsScreen from '../screens/events/EventsScreen';
 import EventDetailScreen from '../screens/events/EventDetailScreen';
 import CreateEventScreen from '../screens/events/CreateEventScreen';
 
+// Lost & Found screens
+import LostFoundScreen from '../screens/lostfound/LostFoundScreen';
+import CreateLostFoundScreen from '../screens/lostfound/CreateLostFoundScreen';
+
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const MarketStack = createNativeStackNavigator();
@@ -47,6 +51,7 @@ const SOSStack = createNativeStackNavigator();
 const AcademicStack = createNativeStackNavigator();
 const CareerStack = createNativeStackNavigator();
 const EventsStack = createNativeStackNavigator();
+const LostFoundStack = createNativeStackNavigator();
 
 function HomeStackScreen() {
   return (
@@ -141,6 +146,16 @@ function EventsStackScreen() {
   );
 }
 
+// ─── LOST & FOUND STACK ───────────────────────────────────────────────────────
+function LostFoundStackScreen() {
+  return (
+    <LostFoundStack.Navigator screenOptions={{ headerShown: false }}>
+      <LostFoundStack.Screen name="LostFoundMain" component={LostFoundScreen} />
+      <LostFoundStack.Screen name="CreateLostFound" component={CreateLostFoundScreen} />
+    </LostFoundStack.Navigator>
+  );
+}
+
 // ─── SOS FLOATING BUTTON ─────────────────────────────────────────────────────
 const SOSButton = () => {
   const navigation = useNavigation();
@@ -187,6 +202,7 @@ export function TabNavigator() {
     Academic:    { icon: '🎓', label: 'Study' },
     Career:      { icon: '🚀', label: 'Career' },
     Events:      { icon: '📅', label: 'Events' },
+    LostFound:   { icon: '🔍', label: 'Lost+Found' },
     Chats:       { icon: '💬', label: 'Chats' },
     Profile:     { icon: '👤', label: 'Profile' },
   };
@@ -208,7 +224,7 @@ export function TabNavigator() {
           tabBarInactiveTintColor: Colors.textDim,
           tabBarLabel: ({ focused }) => (
             <Text style={{
-              fontSize: 9,
+              fontSize: 8,
               fontWeight: '700',
               color: focused ? Colors.accent : Colors.textDim,
               marginTop: 2,
@@ -220,12 +236,12 @@ export function TabNavigator() {
             <View style={{
               alignItems: 'center',
               justifyContent: 'center',
-              width: 36,
-              height: 28,
+              width: 34,
+              height: 26,
               borderRadius: 8,
               backgroundColor: focused ? Colors.accent + '20' : 'transparent',
             }}>
-              <Text style={{ fontSize: 16, opacity: focused ? 1 : 0.4 }}>
+              <Text style={{ fontSize: 15, opacity: focused ? 1 : 0.4 }}>
                 {TAB_ICONS[route.name]?.icon ?? '●'}
               </Text>
             </View>
@@ -238,6 +254,7 @@ export function TabNavigator() {
         <Tab.Screen name="Academic"    component={AcademicStackScreen} />
         <Tab.Screen name="Career"      component={CareerStackScreen} />
         <Tab.Screen name="Events"      component={EventsStackScreen} />
+        <Tab.Screen name="LostFound"   component={LostFoundStackScreen} />
         <Tab.Screen name="Chats"       component={ChatsStack} />
         <Tab.Screen name="Profile"     component={ProfileStackScreen} />
       </Tab.Navigator>
