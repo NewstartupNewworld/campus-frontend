@@ -4,8 +4,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
-const EXPO_PROJECT_ID = 'your-expo-project-id'; // Replace from app.json > extra.eas.projectId
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
+const EXPO_PROJECT_ID = 'fafeb2ed-87fc-4e84-9c5c-e3f0f3442a45';
 
 // ─── FOREGROUND HANDLER ───────────────────────────────────────────────────────
 Notifications.setNotificationHandler({

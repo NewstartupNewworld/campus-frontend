@@ -1,19 +1,18 @@
 import { useEffect } from 'react';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { registerForPushNotifications } from './src/utils/notifications';
+import { initNotifications } from './src/utils/notifications';
 import * as Notifications from 'expo-notifications';
 import { ThemeProvider } from './src/theme/ThemeProvider';
 
 export default function App() {
   useEffect(() => {
-    // Register for push notifications on app start
-    registerForPushNotifications();
+    // Register + save to backend
+    initNotifications();
 
     // Handle notification taps
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
       console.log('Notification tapped:', data);
-      // TODO: navigate to relevant screen based on data.type
     });
 
     return () => subscription.remove();

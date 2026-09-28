@@ -41,6 +41,19 @@ import CreateEventScreen from '../screens/events/CreateEventScreen';
 import LostFoundScreen from '../screens/lostfound/LostFoundScreen';
 import CreateLostFoundScreen from '../screens/lostfound/CreateLostFoundScreen';
 
+// Confessions screens
+import ConfessionsScreen from '../screens/confessions/ConfessionsScreen';
+import CreateConfessionScreen from '../screens/confessions/CreateConfessionScreen';
+
+// Roommate screens
+import RoommateScreen from '../screens/roommate/RoommateScreen';
+import CreateRoommateScreen from '../screens/roommate/CreateRoommateScreen';
+
+// Clubs screens
+import ClubsScreen from '../screens/clubs/ClubsScreen';
+import ClubDetailScreen from '../screens/clubs/ClubDetailScreen';
+import CreateClubScreen from '../screens/clubs/CreateClubScreen';
+
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const MarketStack = createNativeStackNavigator();
@@ -52,6 +65,9 @@ const AcademicStack = createNativeStackNavigator();
 const CareerStack = createNativeStackNavigator();
 const EventsStack = createNativeStackNavigator();
 const LostFoundStack = createNativeStackNavigator();
+const ConfessionsStack = createNativeStackNavigator();
+const RoommateStack = createNativeStackNavigator();
+const ClubsStack = createNativeStackNavigator();
 
 function HomeStackScreen() {
   return (
@@ -108,7 +124,6 @@ function SOSStackScreen() {
   );
 }
 
-// ─── ACADEMIC STACK ───────────────────────────────────────────────────────────
 function AcademicStackScreen() {
   return (
     <AcademicStack.Navigator screenOptions={{ headerShown: false }}>
@@ -123,7 +138,6 @@ function AcademicStackScreen() {
   );
 }
 
-// ─── CAREER STACK ─────────────────────────────────────────────────────────────
 function CareerStackScreen() {
   return (
     <CareerStack.Navigator screenOptions={{ headerShown: false }}>
@@ -135,7 +149,6 @@ function CareerStackScreen() {
   );
 }
 
-// ─── EVENTS STACK ─────────────────────────────────────────────────────────────
 function EventsStackScreen() {
   return (
     <EventsStack.Navigator screenOptions={{ headerShown: false }}>
@@ -146,13 +159,41 @@ function EventsStackScreen() {
   );
 }
 
-// ─── LOST & FOUND STACK ───────────────────────────────────────────────────────
 function LostFoundStackScreen() {
   return (
     <LostFoundStack.Navigator screenOptions={{ headerShown: false }}>
       <LostFoundStack.Screen name="LostFoundMain" component={LostFoundScreen} />
       <LostFoundStack.Screen name="CreateLostFound" component={CreateLostFoundScreen} />
     </LostFoundStack.Navigator>
+  );
+}
+
+function ConfessionsStackScreen() {
+  return (
+    <ConfessionsStack.Navigator screenOptions={{ headerShown: false }}>
+      <ConfessionsStack.Screen name="ConfessionsMain" component={ConfessionsScreen} />
+      <ConfessionsStack.Screen name="CreateConfession" component={CreateConfessionScreen} />
+    </ConfessionsStack.Navigator>
+  );
+}
+
+function RoommateStackScreen() {
+  return (
+    <RoommateStack.Navigator screenOptions={{ headerShown: false }}>
+      <RoommateStack.Screen name="RoommateMain" component={RoommateScreen} />
+      <RoommateStack.Screen name="CreateRoommate" component={CreateRoommateScreen} />
+    </RoommateStack.Navigator>
+  );
+}
+
+// ─── CLUBS STACK ──────────────────────────────────────────────────────────────
+function ClubsStackScreen() {
+  return (
+    <ClubsStack.Navigator screenOptions={{ headerShown: false }}>
+      <ClubsStack.Screen name="ClubsMain" component={ClubsScreen} />
+      <ClubsStack.Screen name="ClubDetail" component={ClubDetailScreen} />
+      <ClubsStack.Screen name="CreateClub" component={CreateClubScreen} />
+    </ClubsStack.Navigator>
   );
 }
 
@@ -196,15 +237,18 @@ export function TabNavigator() {
   const Colors = useColors();
 
   const TAB_ICONS: Record<string, { icon: string; label: string }> = {
-    Home:        { icon: '🏠', label: 'Home' },
-    Marketplace: { icon: '🛍️', label: 'Market' },
-    Buzz:        { icon: '⚡', label: 'Buzz' },
-    Academic:    { icon: '🎓', label: 'Study' },
-    Career:      { icon: '🚀', label: 'Career' },
-    Events:      { icon: '📅', label: 'Events' },
-    LostFound:   { icon: '🔍', label: 'Lost+Found' },
-    Chats:       { icon: '💬', label: 'Chats' },
-    Profile:     { icon: '👤', label: 'Profile' },
+    Home:         { icon: '🏠', label: 'Home' },
+    Marketplace:  { icon: '🛍️', label: 'Market' },
+    Buzz:         { icon: '⚡', label: 'Buzz' },
+    Academic:     { icon: '🎓', label: 'Study' },
+    Career:       { icon: '🚀', label: 'Career' },
+    Events:       { icon: '📅', label: 'Events' },
+    LostFound:    { icon: '🔍', label: 'Lost+Found' },
+    Confessions:  { icon: '🤫', label: 'Confess' },
+    Roommate:     { icon: '🏠', label: 'Roommate' },
+    Clubs:        { icon: '🎯', label: 'Clubs' },
+    Chats:        { icon: '💬', label: 'Chats' },
+    Profile:      { icon: '👤', label: 'Profile' },
   };
 
   return (
@@ -224,7 +268,7 @@ export function TabNavigator() {
           tabBarInactiveTintColor: Colors.textDim,
           tabBarLabel: ({ focused }) => (
             <Text style={{
-              fontSize: 8,
+              fontSize: 7,
               fontWeight: '700',
               color: focused ? Colors.accent : Colors.textDim,
               marginTop: 2,
@@ -236,12 +280,12 @@ export function TabNavigator() {
             <View style={{
               alignItems: 'center',
               justifyContent: 'center',
-              width: 34,
-              height: 26,
+              width: 30,
+              height: 22,
               borderRadius: 8,
               backgroundColor: focused ? Colors.accent + '20' : 'transparent',
             }}>
-              <Text style={{ fontSize: 15, opacity: focused ? 1 : 0.4 }}>
+              <Text style={{ fontSize: 13, opacity: focused ? 1 : 0.4 }}>
                 {TAB_ICONS[route.name]?.icon ?? '●'}
               </Text>
             </View>
@@ -255,6 +299,9 @@ export function TabNavigator() {
         <Tab.Screen name="Career"      component={CareerStackScreen} />
         <Tab.Screen name="Events"      component={EventsStackScreen} />
         <Tab.Screen name="LostFound"   component={LostFoundStackScreen} />
+        <Tab.Screen name="Confessions" component={ConfessionsStackScreen} />
+        <Tab.Screen name="Roommate"    component={RoommateStackScreen} />
+        <Tab.Screen name="Clubs"       component={ClubsStackScreen} />
         <Tab.Screen name="Chats"       component={ChatsStack} />
         <Tab.Screen name="Profile"     component={ProfileStackScreen} />
       </Tab.Navigator>

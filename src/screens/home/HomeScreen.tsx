@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const API_URL = 'https://campus-backend-arfy.onrender.com';
 
 const softShadow = {
   shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
@@ -36,8 +36,6 @@ export const HomeScreen = () => {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
     scroll: { paddingBottom: 30 },
-
-    // Header
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 },
     greeting: { fontSize: 12.5, color: Colors.textMuted, fontWeight: '600' },
     username: { fontSize: 20, fontWeight: '900', color: Colors.text, marginTop: 1 },
@@ -45,35 +43,25 @@ export const HomeScreen = () => {
     bellIcon: { fontSize: 16 },
     bellBadge: { position: 'absolute', top: -3, right: -3, backgroundColor: Colors.danger, borderRadius: 8, minWidth: 15, height: 15, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
     bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
-
-    // Welcome card — gradient instead of tinted border box
     welcomeCard: { marginHorizontal: 16, marginBottom: 18, borderRadius: 18, overflow: 'hidden', ...cardShadow },
     welcomeGradient: { padding: 18 },
     welcomeTitle: { fontSize: 17, fontWeight: '900', color: '#fff', marginBottom: 4 },
     welcomeSub: { fontSize: 12.5, color: 'rgba(255,255,255,0.75)', lineHeight: 19 },
     welcomeCollege: { fontSize: 12.5, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginTop: 8 },
-
-    // Section
     section: { paddingHorizontal: 16, marginBottom: 18 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     sectionTitle: { fontSize: 14.5, fontWeight: '800', color: Colors.text },
     seeAll: { fontSize: 12, fontWeight: '700', color: Colors.accent },
-
-    // Quick action cards — 2x2 grid, shadow
     quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     quickCard: { flex: 1, minWidth: '45%', backgroundColor: Colors.card, borderRadius: 16, padding: 14, alignItems: 'center', gap: 6, ...softShadow },
     quickIcon: { fontSize: 26 },
     quickLabel: { fontSize: 12, fontWeight: '800', color: Colors.text, textAlign: 'center' },
     quickSub: { fontSize: 10, color: Colors.textMuted, textAlign: 'center' },
-
-    // Stat cards — horizontal row, shadow
     statRow: { flexDirection: 'row', gap: 10 },
     statCard: { flex: 1, backgroundColor: Colors.card, borderRadius: 14, padding: 12, alignItems: 'center', gap: 3, ...softShadow },
     statIcon: { fontSize: 19 },
     statValue: { fontSize: 19, fontWeight: '900', color: Colors.accent },
     statLabel: { fontSize: 10, color: Colors.textMuted, textAlign: 'center' },
-
-    // Announcement cards — row layout, shadow
     announcementCard: { backgroundColor: Colors.card, borderRadius: 14, padding: 13, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, ...softShadow },
     announcementIconWrap: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
     announcementIcon: { fontSize: 20 },
@@ -111,7 +99,7 @@ export const HomeScreen = () => {
     { icon: '🛍️', label: 'Marketplace', sub: 'Buy & Sell', screen: 'Marketplace' },
     { icon: '⚡', label: 'Buzz Feed', sub: 'Campus updates', screen: 'Buzz' },
     { icon: '💬', label: 'Chats', sub: 'Messages', screen: 'Chats' },
-    { icon: '👥', label: 'Groups', sub: 'Communities', screen: 'Buzz' },
+    { icon: '🤖', label: 'CampusBot', sub: 'AI Assistant', screen: 'CampusChat' },
   ];
 
   const ANNOUNCEMENTS = [
@@ -144,7 +132,7 @@ export const HomeScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Welcome card — gradient */}
+        {/* Welcome card */}
         <View style={styles.welcomeCard}>
           <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.welcomeGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Text style={styles.welcomeTitle}>🎓 Your Campus Hub</Text>
