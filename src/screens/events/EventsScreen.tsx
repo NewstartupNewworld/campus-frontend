@@ -4,19 +4,22 @@ import {
   ActivityIndicator, StatusBar, RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
 const EVENT_TYPES = ['All', 'Hackathon', 'Workshop', 'Seminar', 'Cultural', 'Sports', 'Event'];
 
-const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
-  Hackathon: { icon: '💻', color: '#4F7CFF', bg: '#4F7CFF22' },
-  Workshop:  { icon: '🔧', color: '#F97316', bg: '#F9731622' },
-  Seminar:   { icon: '🎤', color: '#7C5CFF', bg: '#7C5CFF22' },
-  Cultural:  { icon: '🎭', color: '#EC4899', bg: '#EC489922' },
-  Sports:    { icon: '⚽', color: '#22C55E', bg: '#22C55E22' },
-  Event:     { icon: '📅', color: '#94A3B8', bg: '#94A3B822' },
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TYPE_CONFIG: Record<string, { icon: IconName; color: string; bg: string }> = {
+  Hackathon: { icon: 'code-slash', color: '#4F7CFF', bg: '#4F7CFF22' },
+  Workshop:  { icon: 'construct', color: '#F97316', bg: '#F9731622' },
+  Seminar:   { icon: 'mic', color: '#7C5CFF', bg: '#7C5CFF22' },
+  Cultural:  { icon: 'color-palette', color: '#EC4899', bg: '#EC489922' },
+  Sports:    { icon: 'football', color: '#22C55E', bg: '#22C55E22' },
+  Event:     { icon: 'calendar', color: '#94A3B8', bg: '#94A3B822' },
 };
 
 type Event = {
@@ -46,6 +49,7 @@ export default function EventsScreen({ navigation }: any) {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('All');
   const [upcomingOnly, setUpcomingOnly] = useState(true);
+  const [onlyInterested, setOnlyInterested] = useState(false);
 
   useEffect(() => { fetchEvents(); }, [type, upcomingOnly]);
 
@@ -94,11 +98,6 @@ export default function EventsScreen({ navigation }: any) {
     return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const formatTime = (date: string) => {
-    const d = new Date(date);
-    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  };
-
   const getDaysLeft = (date: string) => {
     const diff = new Date(date).getTime() - Date.now();
     const days = Math.ceil(diff / 86400000);
@@ -116,6 +115,8 @@ export default function EventsScreen({ navigation }: any) {
     return '#22C55E';
   };
 
+  const shown = onlyInterested ? events.filter(e => e.is_interested) : events;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
@@ -123,11 +124,12 @@ export default function EventsScreen({ navigation }: any) {
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Events 📅</Text>
+          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Events</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateEvent')}
-            style={{ backgroundColor: '#4F7CFF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 }}>
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>+ Post</Text>
+            style={{ backgroundColor: '#4F7CFF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Post</Text>
           </TouchableOpacity>
         </View>
         <Text style={{ color: colors.textMuted, fontSize: 14 }}>Hackathons, workshops & more</Text>
@@ -148,18 +150,24 @@ export default function EventsScreen({ navigation }: any) {
         <TouchableOpacity
           onPress={() => setUpcomingOnly(!upcomingOnly)}
           style={{
-            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 5,
             backgroundColor: upcomingOnly ? '#22C55E' : colors.card,
             borderWidth: 0.5, borderColor: upcomingOnly ? '#22C55E' : colors.border,
           }}>
+          <Ionicons name="calendar-outline" size={13} color={upcomingOnly ? '#fff' : colors.textMuted} />
           <Text style={{ color: upcomingOnly ? '#fff' : colors.textMuted, fontSize: 12, fontWeight: '600' }}>
-            🗓 Upcoming
+            Upcoming
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => navigation.navigate('MyEvents')}
-          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: colors.card, borderWidth: 0.5, borderColor: colors.border }}>
-          <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600' }}>⭐ Interested</Text>
+          onPress={() => setOnlyInterested(!onlyInterested)}
+          style={{
+            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 5,
+            backgroundColor: onlyInterested ? '#F59E0B' : colors.card,
+            borderWidth: 0.5, borderColor: onlyInterested ? '#F59E0B' : colors.border,
+          }}>
+          <Ionicons name={onlyInterested ? 'star' : 'star-outline'} size={13} color={onlyInterested ? '#fff' : colors.textMuted} />
+          <Text style={{ color: onlyInterested ? '#fff' : colors.textMuted, fontSize: 12, fontWeight: '600' }}>Interested</Text>
         </TouchableOpacity>
       </View>
 
@@ -168,16 +176,17 @@ export default function EventsScreen({ navigation }: any) {
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
         {EVENT_TYPES.map(t => {
           const config = TYPE_CONFIG[t];
+          const active = type === t;
           return (
             <TouchableOpacity key={t} onPress={() => setType(t)}
               style={{
                 paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
-                backgroundColor: type === t ? (config?.color ?? '#4F7CFF') : colors.card,
-                borderWidth: 0.5, borderColor: type === t ? (config?.color ?? '#4F7CFF') : colors.border,
-                flexDirection: 'row', alignItems: 'center', gap: 4,
+                backgroundColor: active ? (config?.color ?? '#4F7CFF') : colors.card,
+                borderWidth: 0.5, borderColor: active ? (config?.color ?? '#4F7CFF') : colors.border,
+                flexDirection: 'row', alignItems: 'center', gap: 5,
               }}>
-              {config && <Text style={{ fontSize: 12 }}>{config.icon}</Text>}
-              <Text style={{ color: type === t ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '500' }}>{t}</Text>
+              {config ? <Ionicons name={config.icon} size={13} color={active ? '#fff' : colors.textMuted} /> : null}
+              <Text style={{ color: active ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '500' }}>{t}</Text>
             </TouchableOpacity>
           );
         })}
@@ -190,19 +199,20 @@ export default function EventsScreen({ navigation }: any) {
 
         {loading ? (
           <ActivityIndicator color={colors.accent} size="large" style={{ marginTop: 40 }} />
-        ) : events.length === 0 ? (
+        ) : shown.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 40 }}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>📅</Text>
+            <Ionicons name="calendar-outline" size={48} color={colors.textDim} style={{ marginBottom: 12 }} />
             <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>No events found</Text>
             <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
-              Be the first to post an event or hackathon!
+              {onlyInterested ? 'You have not marked any event as interested.' : 'Be the first to post an event or hackathon!'}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('CreateEvent')}
-              style={{ backgroundColor: '#4F7CFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}>
-              <Text style={{ color: '#fff', fontWeight: '600' }}>+ Post Event</Text>
+              style={{ backgroundColor: '#4F7CFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="add" size={16} color="#fff" />
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Post Event</Text>
             </TouchableOpacity>
           </View>
-        ) : events.map(event => {
+        ) : shown.map(event => {
           const config = TYPE_CONFIG[event.event_type] ?? TYPE_CONFIG['Event'];
           return (
             <TouchableOpacity key={event.id}
@@ -218,14 +228,15 @@ export default function EventsScreen({ navigation }: any) {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <View style={{ backgroundColor: config.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Text style={{ fontSize: 11 }}>{config.icon}</Text>
+                      <Ionicons name={config.icon} size={12} color={config.color} />
                       <Text style={{ color: config.color, fontSize: 11, fontWeight: '600' }}>{event.event_type}</Text>
                     </View>
-                    {event.is_online && (
-                      <View style={{ backgroundColor: '#22C55E22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                        <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '600' }}>🌐 Online</Text>
+                    {event.is_online ? (
+                      <View style={{ backgroundColor: '#22C55E22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="globe-outline" size={12} color="#22C55E" />
+                        <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '600' }}>Online</Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                   <Text style={{ color: getDaysLeftColor(event.start_date), fontSize: 12, fontWeight: '700' }}>
                     {getDaysLeft(event.start_date)}
@@ -246,24 +257,28 @@ export default function EventsScreen({ navigation }: any) {
 
                 {/* Info chips */}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                  <View style={{ backgroundColor: colors.cardAlt, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>📅 {formatDate(event.start_date)}</Text>
+                  <View style={{ backgroundColor: colors.cardAlt, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{formatDate(event.start_date)}</Text>
                   </View>
-                  {event.location && (
-                    <View style={{ backgroundColor: colors.cardAlt, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>📍 {event.location}</Text>
+                  {event.location ? (
+                    <View style={{ backgroundColor: colors.cardAlt, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{event.location}</Text>
                     </View>
-                  )}
-                  {event.prize_pool && (
-                    <View style={{ backgroundColor: '#22C55E22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                      <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '600' }}>🏆 {event.prize_pool}</Text>
+                  ) : null}
+                  {event.prize_pool ? (
+                    <View style={{ backgroundColor: '#22C55E22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="trophy-outline" size={12} color="#22C55E" />
+                      <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '600' }}>{event.prize_pool}</Text>
                     </View>
-                  )}
-                  {event.team_size && (
-                    <View style={{ backgroundColor: colors.cardAlt, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>👥 {event.team_size}</Text>
+                  ) : null}
+                  {event.team_size ? (
+                    <View style={{ backgroundColor: colors.cardAlt, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="people-outline" size={12} color={colors.textMuted} />
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{event.team_size}</Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
 
                 {/* Footer */}
@@ -274,11 +289,12 @@ export default function EventsScreen({ navigation }: any) {
                   <TouchableOpacity
                     onPress={() => toggleInterest(event.id)}
                     style={{
-                      paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10,
+                      paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 5,
                       backgroundColor: event.is_interested ? config.color : colors.cardAlt,
                     }}>
+                    <Ionicons name={event.is_interested ? 'star' : 'star-outline'} size={13} color={event.is_interested ? '#fff' : colors.textMuted} />
                     <Text style={{ color: event.is_interested ? '#fff' : colors.textMuted, fontSize: 12, fontWeight: '600' }}>
-                      {event.is_interested ? '⭐ Interested' : '+ Interest'}
+                      {event.is_interested ? 'Interested' : 'Interest'}
                     </Text>
                   </TouchableOpacity>
                 </View>

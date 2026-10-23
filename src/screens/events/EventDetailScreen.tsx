@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
   Hackathon: { icon: '💻', color: '#4F7CFF', bg: '#4F7CFF22' },

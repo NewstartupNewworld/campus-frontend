@@ -162,7 +162,7 @@ export const SignupScreen = () => {
     }
     setLoading(true);
     try {
-      const response = await fetch('https://campus-backend-production-2dbb.up.railway.app/api/auth/signup', {
+      const response = await fetch('https://campus-backend-arfy.onrender.com/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verifyMethod, email: email || null, studentId: studentId || null, studentName: studentName || null, phoneNumber: phoneNumber || null, password, college, department, year, course: course || null, hostel: hostel || null, interests: interests || null }),

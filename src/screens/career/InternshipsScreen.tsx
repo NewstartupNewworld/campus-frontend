@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useColors } from '../../theme/ThemeProvider';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
 const SKILLS = ['React', 'Node.js', 'Python', 'ML/AI', 'DSA', 'Java', 'Flutter', 'DevOps', 'UI/UX', 'Data Analysis'];
 const DOMAINS = ['Web Dev', 'App Dev', 'Data Science', 'ML/AI', 'DevOps', 'Product', 'Design', 'Research'];

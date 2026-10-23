@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Colors } from '../theme/colors';
@@ -26,6 +26,12 @@ export function RootNavigator() {
 
   useEffect(() => {
     checkToken();
+  }, []);
+
+  // Profile > Log out clears the saved login and sends this event
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('auth:logout', () => setIsLoggedIn(false));
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {

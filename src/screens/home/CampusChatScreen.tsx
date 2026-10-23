@@ -1,193 +1,238 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, StatusBar,
-  SafeAreaView, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
+  KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
+const PRIMARY = '#2F54EB';
 
-const QUICK_QUESTIONS = [
-  '🛍️ What\'s available on marketplace?',
-  '📅 Any events happening this week?',
-  '🤔 Help me with DSA doubt',
-  '💼 How to get a good internship?',
-  '🍕 Best food places near campus?',
-  '📚 Study tips for exams?',
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const QUICK_QUESTIONS: { icon: IconName; text: string }[] = [
+  { icon: 'storefront-outline', text: "What's available on the marketplace?" },
+  { icon: 'calendar-outline', text: 'Any events happening this week?' },
+  { icon: 'help-circle-outline', text: 'Help me with a DSA doubt' },
+  { icon: 'briefcase-outline', text: 'How to get a good internship?' },
+  { icon: 'restaurant-outline', text: 'Best food places near campus?' },
+  { icon: 'book-outline', text: 'Study tips for exams?' },
 ];
 
-type Message = { role: 'user' | 'ai'; text: string };
+type Msg = { role: 'user' | 'ai'; text: string };
 
 export default function CampusChatScreen() {
-  const colors = useColors();
+  const Colors = useColors();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<{ text: string; reason: string } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
-  const sendMessage = async (text?: string) => {
-    const finalMsg = (text || message).trim();
+  const sendMessage = async (text?: string, isRetry = false) => {
+    const finalMsg = (text ?? message).trim();
     if (!finalMsg || loading) return;
+    setError(null);
     setMessage('');
-    setMessages(prev => [...prev, { role: 'user', text: finalMsg }]);
+    // On a retry the user's message is already the last one in the list
+    const base = isRetry ? messages.slice(0, -1) : messages;
+    if (!isRetry) setMessages((prev) => [...prev, { role: 'user', text: finalMsg }]);
     setLoading(true);
-
     try {
       const token = await AsyncStorage.getItem('token');
       const res = await fetch(`${BASE_URL}/api/recommendations/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          message: finalMsg,
-          history: messages.slice(-6),
-        }),
+        body: JSON.stringify({ message: finalMsg, history: base.slice(-6) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setMessages(prev => [...prev, { role: 'ai', text: data.reply }]);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      if (!res.ok) throw new Error(data?.error || 'Could not get a reply');
+      setMessages((prev) => [...prev, { role: 'ai', text: data.reply }]);
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to get response');
-      setMessages(prev => prev.slice(0, -1));
+      setError({ text: finalMsg, reason: err?.message || 'Could not get a reply' });
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('Home');
+  };
 
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, gap: 12 }}>
-          <TouchableOpacity onPress={() => navigation.goBack()}
-            style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: colors.text, fontSize: 18 }}>‹</Text>
+  const canSend = !!message.trim() && !loading;
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.iconBtn} onPress={goBack} accessibilityRole="button" accessibilityLabel="Go back">
+            <Ionicons name="arrow-back" size={20} color={Colors.text} />
           </TouchableOpacity>
-          <LinearGradient colors={['#4F7CFF', '#7C5CFF']}
-            style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 18 }}>🤖</Text>
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>CampusBot</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 11 }}>AI assistant for your campus</Text>
+          <View style={styles.botAvatar}>
+            <Ionicons name="sparkles" size={18} color="#FFFFFF" />
           </View>
-          {/* Clear chat */}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>CampusBot</Text>
+            <Text style={styles.headerSub}>AI assistant for your campus</Text>
+          </View>
           {messages.length > 0 && (
-            <TouchableOpacity onPress={() => setMessages([])}
-              style={{ backgroundColor: colors.card, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600' }}>Clear</Text>
+            <TouchableOpacity
+              style={styles.clearBtn}
+              onPress={() => { setMessages([]); setError(null); }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear chat"
+            >
+              <Text style={styles.clearText}>Clear</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Messages or empty state */}
         {messages.length === 0 ? (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-
-            {/* Bot intro card */}
-            <View style={{ backgroundColor: colors.card, borderRadius: 20, padding: 20, marginBottom: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 3 }}>
-              <LinearGradient colors={['#4F7CFF', '#7C5CFF']}
-                style={{ width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 30 }}>🤖</Text>
-              </LinearGradient>
-              <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 6 }}>Hey! I'm CampusBot 👋</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
-                I know everything about your campus — marketplace, events, academic help, career advice and more. Ask me anything!
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View style={styles.introCard}>
+              <View style={styles.introIcon}>
+                <Ionicons name="sparkles" size={30} color="#FFFFFF" />
+              </View>
+              <Text style={styles.introTitle}>Hi, I am CampusBot</Text>
+              <Text style={styles.introText}>
+                Ask me about the marketplace, events, study help, career advice and life on your campus.
               </Text>
             </View>
 
-            {/* Quick questions */}
-            <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-              QUICK QUESTIONS
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {QUICK_QUESTIONS.map((q, i) => (
-                <TouchableOpacity key={i} onPress={() => sendMessage(q)} activeOpacity={0.8}
-                  style={{ backgroundColor: colors.card, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }}>
-                  <Text style={{ color: colors.text, fontSize: 13 }}>{q}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <Text style={styles.sectionLabel}>QUICK QUESTIONS</Text>
+            {QUICK_QUESTIONS.map((q) => (
+              <TouchableOpacity
+                key={q.text}
+                style={styles.quickRow}
+                onPress={() => sendMessage(q.text)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={q.text}
+              >
+                <Ionicons name={q.icon} size={20} color={Colors.accent} />
+                <Text style={styles.quickText}>{q.text}</Text>
+                <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         ) : (
-          <ScrollView ref={scrollRef} style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 20 }}
-            showsVerticalScrollIndicator={false}>
+          <ScrollView
+            ref={scrollRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16, gap: 12 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          >
             {messages.map((msg, i) => (
               <View key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%' }}>
                 {msg.role === 'ai' && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <LinearGradient colors={['#4F7CFF', '#7C5CFF']}
-                      style={{ width: 20, height: 20, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 11 }}>🤖</Text>
-                    </LinearGradient>
-                    <Text style={{ color: '#4F7CFF', fontSize: 11, fontWeight: '600' }}>CampusBot</Text>
+                  <View style={styles.aiTag}>
+                    <Ionicons name="sparkles" size={12} color={Colors.accent} />
+                    <Text style={styles.aiTagText}>CampusBot</Text>
                   </View>
                 )}
-                <View style={{
-                  backgroundColor: msg.role === 'user' ? '#4F7CFF' : colors.card,
-                  borderRadius: 16,
-                  borderBottomRightRadius: msg.role === 'user' ? 4 : 16,
-                  borderBottomLeftRadius: msg.role === 'ai' ? 4 : 16,
-                  padding: 14,
-                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
-                }}>
-                  <Text style={{ color: msg.role === 'user' ? '#fff' : colors.text, fontSize: 14, lineHeight: 22 }}>
-                    {msg.text}
-                  </Text>
+                <View style={[styles.bubble, msg.role === 'user' ? styles.bubbleUser : styles.bubbleAi]}>
+                  <Text style={[styles.bubbleText, msg.role === 'user' && { color: '#FFFFFF' }]}>{msg.text}</Text>
                 </View>
               </View>
             ))}
 
             {loading && (
-              <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: colors.card, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }}>
-                <ActivityIndicator color="#4F7CFF" size="small" />
-                <Text style={{ color: colors.textMuted, fontSize: 13 }}>CampusBot is thinking...</Text>
+              <View style={styles.thinking}>
+                <ActivityIndicator color={Colors.accent} size="small" />
+                <Text style={styles.thinkingText}>CampusBot is thinking...</Text>
+              </View>
+            )}
+
+            {error && !loading && (
+              <View style={styles.errorCard}>
+                <Ionicons name="alert-circle" size={20} color={Colors.warn} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.errorTitle}>Could not get a reply</Text>
+                  <Text style={styles.errorSub}>{error.reason}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={() => sendMessage(error.text, true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry"
+                >
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
               </View>
             )}
           </ScrollView>
         )}
 
-        {/* Input bar */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-          padding: 16, paddingBottom: 24,
-          backgroundColor: colors.card,
-          shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 3,
-        }}>
+        <View style={styles.inputBar}>
           <TextInput
             value={message}
             onChangeText={setMessage}
-            placeholder="Ask CampusBot anything..."
-            placeholderTextColor={colors.textDim}
-            multiline maxLength={500}
-            style={{
-              flex: 1, backgroundColor: colors.bg, borderRadius: 14,
-              padding: 12, color: colors.text, fontSize: 14, maxHeight: 100,
-            }}
+            placeholder="Ask CampusBot anything"
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            maxLength={500}
+            style={styles.input}
           />
           <TouchableOpacity
             onPress={() => sendMessage()}
-            disabled={loading || !message.trim()}
-            style={{
-              width: 44, height: 44, borderRadius: 14, overflow: 'hidden',
-              opacity: message.trim() && !loading ? 1 : 0.4,
-            }}
+            disabled={!canSend}
+            style={[styles.sendBtn, !canSend && { opacity: 0.4 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
           >
-            <LinearGradient colors={['#4F7CFF', '#7C5CFF']} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 20, color: '#fff' }}>↑</Text>
-            </LinearGradient>
+            <Ionicons name="arrow-up" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const makeStyles = (Colors: any) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors.bg },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 10 },
+    iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+    botAvatar: { width: 40, height: 40, borderRadius: 13, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { color: Colors.text, fontSize: 17, fontWeight: '800' },
+    headerSub: { color: Colors.textMuted, fontSize: 12 },
+    clearBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+    clearText: { color: Colors.accent, fontSize: 13, fontWeight: '700' },
+
+    introCard: { backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderRadius: 20, padding: 20, marginBottom: 20, alignItems: 'center' },
+    introIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+    introTitle: { color: Colors.text, fontSize: 18, fontWeight: '800', marginBottom: 6 },
+    introText: { color: Colors.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    sectionLabel: { color: Colors.textMuted, fontSize: 12, fontWeight: '700', marginBottom: 10, letterSpacing: 0.8 },
+    quickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, paddingHorizontal: 14, marginBottom: 8 },
+    quickText: { flex: 1, color: Colors.text, fontSize: 14.5 },
+
+    aiTag: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+    aiTagText: { color: Colors.accent, fontSize: 12, fontWeight: '700' },
+    bubble: { borderRadius: 16, padding: 14 },
+    bubbleUser: { backgroundColor: PRIMARY, borderBottomRightRadius: 4 },
+    bubbleAi: { backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderBottomLeftRadius: 4 },
+    bubbleText: { color: Colors.text, fontSize: 14.5, lineHeight: 22 },
+    thinking: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderRadius: 16 },
+    thinkingText: { color: Colors.textMuted, fontSize: 13.5 },
+    errorCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.warn + '1F', borderWidth: 1, borderColor: Colors.warn + '55', borderRadius: 14, padding: 12 },
+    errorTitle: { color: Colors.text, fontSize: 13.5, fontWeight: '700' },
+    errorSub: { color: Colors.textMuted, fontSize: 12.5, marginTop: 1 },
+    retryBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 },
+    retryText: { color: Colors.accent, fontSize: 13.5, fontWeight: '800' },
+
+    inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, backgroundColor: Colors.card, borderTopWidth: 1, borderTopColor: Colors.border },
+    input: { flex: 1, minHeight: 44, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: Colors.text, fontSize: 14.5, maxHeight: 110 },
+    sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
+  });

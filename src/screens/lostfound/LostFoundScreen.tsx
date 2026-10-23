@@ -4,10 +4,19 @@ import {
   ActivityIndicator, StatusBar, RefreshControl, Alert, Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const CATEGORIES = ['All', 'Phone', 'Wallet', 'Keys', 'Laptop', 'ID Card', 'Books', 'Clothes', 'Other'];
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TYPE_TABS: { key: 'all' | 'lost' | 'found'; label: string; icon: IconName }[] = [
+  { key: 'all', label: 'All', icon: 'search' },
+  { key: 'lost', label: 'Lost', icon: 'sad-outline' },
+  { key: 'found', label: 'Found', icon: 'checkmark-circle-outline' },
+];
 
 type Item = {
   id: number;
@@ -86,10 +95,11 @@ export default function LostFoundScreen({ navigation }: any) {
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Lost & Found 🔍</Text>
+          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Lost & Found</Text>
           <TouchableOpacity onPress={() => navigation.navigate('CreateLostFound')}
-            style={{ backgroundColor: '#F97316', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 }}>
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>+ Post</Text>
+            style={{ backgroundColor: '#F97316', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Post</Text>
           </TouchableOpacity>
         </View>
         <Text style={{ color: colors.textMuted, fontSize: 14 }}>Find lost items on campus</Text>
@@ -97,16 +107,16 @@ export default function LostFoundScreen({ navigation }: any) {
 
       {/* Type toggle */}
       <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.card, borderRadius: 14, padding: 4 }}>
-        {[
-          { key: 'all', label: '🔍 All' },
-          { key: 'lost', label: '😢 Lost' },
-          { key: 'found', label: '✅ Found' },
-        ].map(t => (
-          <TouchableOpacity key={t.key} onPress={() => setActiveType(t.key as any)}
-            style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: activeType === t.key ? '#F97316' : 'transparent' }}>
-            <Text style={{ color: activeType === t.key ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '600' }}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {TYPE_TABS.map(t => {
+          const active = activeType === t.key;
+          return (
+            <TouchableOpacity key={t.key} onPress={() => setActiveType(t.key)}
+              style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: active ? '#F97316' : 'transparent' }}>
+              <Ionicons name={t.icon} size={15} color={active ? '#fff' : colors.textMuted} />
+              <Text style={{ color: active ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '600' }}>{t.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Search */}
@@ -137,75 +147,83 @@ export default function LostFoundScreen({ navigation }: any) {
         {loading ? <ActivityIndicator color="#F97316" size="large" style={{ marginTop: 40 }} />
           : items.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 40 }}>
-              <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
+              <Ionicons name="search-outline" size={48} color={colors.textDim} style={{ marginBottom: 12 }} />
               <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>Nothing here yet</Text>
               <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
                 Lost something? Post it here and your campus mates will help!
               </Text>
               <TouchableOpacity onPress={() => navigation.navigate('CreateLostFound')}
-                style={{ backgroundColor: '#F97316', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}>
-                <Text style={{ color: '#fff', fontWeight: '600' }}>+ Post Item</Text>
+                style={{ backgroundColor: '#F97316', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Post Item</Text>
               </TouchableOpacity>
             </View>
-          ) : items.map(item => (
-            <View key={item.id} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: colors.border }}>
-              {/* Top row */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{
-                    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10,
-                    backgroundColor: item.type === 'lost' ? '#EF444422' : '#22C55E22',
-                  }}>
-                    <Text style={{ color: item.type === 'lost' ? '#EF4444' : '#22C55E', fontSize: 12, fontWeight: '700' }}>
-                      {item.type === 'lost' ? '😢 LOST' : '✅ FOUND'}
-                    </Text>
-                  </View>
-                  {item.category && (
-                    <View style={{ backgroundColor: '#F9731622', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                      <Text style={{ color: '#F97316', fontSize: 11 }}>{item.category}</Text>
+          ) : items.map(item => {
+            const isLost = item.type === 'lost';
+            return (
+              <View key={item.id} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: colors.border }}>
+                {/* Top row */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{
+                      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 4,
+                      backgroundColor: isLost ? '#EF444422' : '#22C55E22',
+                    }}>
+                      <Ionicons name={isLost ? 'sad-outline' : 'checkmark-circle'} size={13} color={isLost ? '#EF4444' : '#22C55E'} />
+                      <Text style={{ color: isLost ? '#EF4444' : '#22C55E', fontSize: 12, fontWeight: '700' }}>
+                        {isLost ? 'LOST' : 'FOUND'}
+                      </Text>
                     </View>
-                  )}
+                    {item.category ? (
+                      <View style={{ backgroundColor: '#F9731622', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                        <Text style={{ color: '#F97316', fontSize: 11 }}>{item.category}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={{ color: colors.textDim, fontSize: 11 }}>{timeAgo(item.created_at)}</Text>
                 </View>
-                <Text style={{ color: colors.textDim, fontSize: 11 }}>{timeAgo(item.created_at)}</Text>
-              </View>
 
-              {/* Title */}
-              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 6 }}>{item.title}</Text>
+                {/* Title */}
+                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 6 }}>{item.title}</Text>
 
-              {/* Description */}
-              {item.description ? (
-                <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 20, marginBottom: 8 }} numberOfLines={3}>
-                  {item.description}
-                </Text>
-              ) : null}
+                {/* Description */}
+                {item.description ? (
+                  <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 20, marginBottom: 8 }} numberOfLines={3}>
+                    {item.description}
+                  </Text>
+                ) : null}
 
-              {/* Location */}
-              {item.location && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-                  <Text style={{ color: colors.textDim, fontSize: 12 }}>📍 {item.location}</Text>
-                </View>
-              )}
+                {/* Location */}
+                {item.location ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                    <Ionicons name="location-outline" size={13} color={colors.textDim} />
+                    <Text style={{ color: colors.textDim, fontSize: 12 }}>{item.location}</Text>
+                  </View>
+                ) : null}
 
-              {/* Footer */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                <Text style={{ color: colors.textDim, fontSize: 11 }}>by {item.anonymous_handle}</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {item.contact && (
+                {/* Footer */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                  <Text style={{ color: colors.textDim, fontSize: 11 }}>by {item.anonymous_handle}</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {item.contact ? (
+                      <TouchableOpacity
+                        onPress={() => Linking.openURL(`tel:${item.contact}`)}
+                        style={{ backgroundColor: '#22C55E22', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="call-outline" size={13} color="#22C55E" />
+                        <Text style={{ color: '#22C55E', fontSize: 12, fontWeight: '600' }}>Contact</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     <TouchableOpacity
-                      onPress={() => Linking.openURL(`tel:${item.contact}`)}
-                      style={{ backgroundColor: '#22C55E22', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}>
-                      <Text style={{ color: '#22C55E', fontSize: 12, fontWeight: '600' }}>📞 Contact</Text>
+                      onPress={() => markResolved(item.id)}
+                      style={{ backgroundColor: '#4F7CFF22', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="checkmark" size={13} color="#4F7CFF" />
+                      <Text style={{ color: '#4F7CFF', fontSize: 12, fontWeight: '600' }}>Resolved</Text>
                     </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    onPress={() => markResolved(item.id)}
-                    style={{ backgroundColor: '#4F7CFF22', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}>
-                    <Text style={{ color: '#4F7CFF', fontSize: 12, fontWeight: '600' }}>✓ Resolved</Text>
-                  </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
       </ScrollView>
     </View>
   );

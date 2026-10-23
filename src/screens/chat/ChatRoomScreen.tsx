@@ -12,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useColors } from '../../theme/ThemeProvider';
 import { RatingModal } from '../../components/RatingModal';
 
-const SOCKET_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const SOCKET_URL = 'https://campus-backend-arfy.onrender.com';
 
 type ChatStatus = 'pending' | 'accepted' | 'rejected';
 

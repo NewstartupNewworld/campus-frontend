@@ -7,7 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const SUBJECTS = ['Maths', 'Physics', 'Chemistry', 'DSA', 'OS', 'DBMS', 'CN', 'Algorithms', 'Other'];
 
 type Message = { role: 'user' | 'ai'; text: string };

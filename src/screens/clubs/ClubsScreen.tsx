@@ -4,10 +4,18 @@ import {
   ActivityIndicator, StatusBar, RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const CATEGORIES = ['All', 'Tech', 'Cultural', 'Sports', 'Music', 'Dance', 'Literary', 'Social', 'Science', 'Other'];
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TABS: { key: 'all' | 'my'; label: string; icon: IconName }[] = [
+  { key: 'all', label: 'All Clubs', icon: 'globe-outline' },
+  { key: 'my', label: 'My Clubs', icon: 'star-outline' },
+];
 
 type Club = {
   id: number;
@@ -70,10 +78,11 @@ export default function ClubsScreen({ navigation }: any) {
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Clubs 🎯</Text>
+          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Clubs</Text>
           <TouchableOpacity onPress={() => navigation.navigate('CreateClub')}
-            style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 }}>
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>+ Create</Text>
+            style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Create</Text>
           </TouchableOpacity>
         </View>
         <Text style={{ color: colors.textMuted, fontSize: 14 }}>Campus clubs & societies</Text>
@@ -81,12 +90,16 @@ export default function ClubsScreen({ navigation }: any) {
 
       {/* Tabs */}
       <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.card, borderRadius: 14, padding: 4 }}>
-        {[{ key: 'all', label: '🌐 All Clubs' }, { key: 'my', label: '⭐ My Clubs' }].map(t => (
-          <TouchableOpacity key={t.key} onPress={() => setActiveTab(t.key as any)}
-            style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: activeTab === t.key ? '#7C5CFF' : 'transparent' }}>
-            <Text style={{ color: activeTab === t.key ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '600' }}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {TABS.map(t => {
+          const active = activeTab === t.key;
+          return (
+            <TouchableOpacity key={t.key} onPress={() => setActiveTab(t.key)}
+              style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, backgroundColor: active ? '#7C5CFF' : 'transparent' }}>
+              <Ionicons name={t.icon} size={15} color={active ? '#fff' : colors.textMuted} />
+              <Text style={{ color: active ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '600' }}>{t.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Search */}
@@ -119,7 +132,7 @@ export default function ClubsScreen({ navigation }: any) {
         {loading ? <ActivityIndicator color="#7C5CFF" size="large" style={{ marginTop: 40 }} />
           : clubs.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 40 }}>
-              <Text style={{ fontSize: 48, marginBottom: 12 }}>🎯</Text>
+              <Ionicons name="people-outline" size={48} color={colors.textDim} style={{ marginBottom: 12 }} />
               <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
                 {activeTab === 'my' ? 'No clubs joined yet' : 'No clubs yet'}
               </Text>
@@ -127,9 +140,10 @@ export default function ClubsScreen({ navigation }: any) {
                 {activeTab === 'my' ? 'Join clubs to see them here!' : 'Be the first to create a club!'}
               </Text>
               <TouchableOpacity onPress={() => activeTab === 'my' ? setActiveTab('all') : navigation.navigate('CreateClub')}
-                style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}>
+                style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name={activeTab === 'my' ? 'globe-outline' : 'add'} size={16} color="#fff" />
                 <Text style={{ color: '#fff', fontWeight: '600' }}>
-                  {activeTab === 'my' ? '🌐 Browse Clubs' : '+ Create Club'}
+                  {activeTab === 'my' ? 'Browse Clubs' : 'Create Club'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -139,9 +153,13 @@ export default function ClubsScreen({ navigation }: any) {
               activeOpacity={0.75}
               style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
 
-              {/* Icon */}
+              {/* Icon (emoji chosen by the club creator, so it stays as text) */}
               <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: '#7C5CFF22', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 26 }}>{club.icon}</Text>
+                {club.icon ? (
+                  <Text style={{ fontSize: 26 }}>{club.icon}</Text>
+                ) : (
+                  <Ionicons name="people" size={24} color="#7C5CFF" />
+                )}
               </View>
 
               {/* Info */}
@@ -150,19 +168,23 @@ export default function ClubsScreen({ navigation }: any) {
                 {club.description ? (
                   <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18 }} numberOfLines={2}>{club.description}</Text>
                 ) : null}
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
                   <View style={{ backgroundColor: '#7C5CFF22', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
                     <Text style={{ color: '#7C5CFF', fontSize: 11 }}>{club.category}</Text>
                   </View>
-                  <Text style={{ color: colors.textDim, fontSize: 11 }}>👥 {club.members_count} members</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Ionicons name="people-outline" size={12} color={colors.textDim} />
+                    <Text style={{ color: colors.textDim, fontSize: 11 }}>{club.members_count} members</Text>
+                  </View>
                 </View>
               </View>
 
               {/* Join button */}
               <TouchableOpacity onPress={() => toggleJoin(club.id, club.is_member)}
-                style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: club.is_member ? '#7C5CFF22' : '#7C5CFF' }}>
+                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: club.is_member ? '#7C5CFF22' : '#7C5CFF' }}>
+                <Ionicons name={club.is_member ? 'checkmark' : 'add'} size={14} color={club.is_member ? '#7C5CFF' : '#fff'} />
                 <Text style={{ color: club.is_member ? '#7C5CFF' : '#fff', fontSize: 12, fontWeight: '700' }}>
-                  {club.is_member ? '✓ Joined' : '+ Join'}
+                  {club.is_member ? 'Joined' : 'Join'}
                 </Text>
               </TouchableOpacity>
             </TouchableOpacity>

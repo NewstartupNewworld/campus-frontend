@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const EXAM_TYPES = ['Mid-sem', 'End-sem', 'GATE', 'Placement'];
 const SUBJECTS = ['DSA', 'OS', 'DBMS', 'CN', 'Algorithms', 'Maths', 'Other'];
 

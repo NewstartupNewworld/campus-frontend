@@ -4,18 +4,21 @@ import {
   ActivityIndicator, StatusBar, RefreshControl, Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const CATEGORIES = ['All', 'Love', 'Academic', 'Hostel', 'Funny', 'Serious', 'General'];
 
-const CAT_CONFIG: Record<string, { emoji: string; color: string }> = {
-  Love:     { emoji: '❤️', color: '#EC4899' },
-  Academic: { emoji: '📚', color: '#4F7CFF' },
-  Hostel:   { emoji: '🏠', color: '#F97316' },
-  Funny:    { emoji: '😂', color: '#22C55E' },
-  Serious:  { emoji: '😔', color: '#7C5CFF' },
-  General:  { emoji: '🤫', color: '#94A3B8' },
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const CAT_CONFIG: Record<string, { icon: IconName; color: string }> = {
+  Love:     { icon: 'heart', color: '#EC4899' },
+  Academic: { icon: 'book', color: '#4F7CFF' },
+  Hostel:   { icon: 'home', color: '#F97316' },
+  Funny:    { icon: 'happy', color: '#22C55E' },
+  Serious:  { icon: 'sad', color: '#7C5CFF' },
+  General:  { icon: 'chatbubble-ellipses', color: '#94A3B8' },
 };
 
 type Confession = {
@@ -79,7 +82,7 @@ export default function ConfessionsScreen({ navigation }: any) {
             method: 'POST', headers: { Authorization: `Bearer ${token}` },
           });
           setConfessions(prev => prev.filter(c => c.id !== id));
-          Alert.alert('✅ Reported', 'Thank you for keeping the campus safe!');
+          Alert.alert('Reported', 'Thank you for keeping the campus safe!');
         }
       }
     ]);
@@ -103,10 +106,11 @@ export default function ConfessionsScreen({ navigation }: any) {
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Confessions 🤫</Text>
+          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700' }}>Confessions</Text>
           <TouchableOpacity onPress={() => navigation.navigate('CreateConfession')}
-            style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 }}>
-            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>+ Confess</Text>
+            style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Confess</Text>
           </TouchableOpacity>
         </View>
         <Text style={{ color: colors.textMuted, fontSize: 14 }}>Anonymous · Only your campus sees this</Text>
@@ -117,16 +121,17 @@ export default function ConfessionsScreen({ navigation }: any) {
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
         {CATEGORIES.map(c => {
           const config = CAT_CONFIG[c];
+          const active = category === c;
           return (
             <TouchableOpacity key={c} onPress={() => setCategory(c)}
               style={{
                 paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
-                backgroundColor: category === c ? (config?.color ?? '#7C5CFF') : colors.card,
-                borderWidth: 0.5, borderColor: category === c ? (config?.color ?? '#7C5CFF') : colors.border,
-                flexDirection: 'row', alignItems: 'center', gap: 4,
+                backgroundColor: active ? (config?.color ?? '#7C5CFF') : colors.card,
+                borderWidth: 0.5, borderColor: active ? (config?.color ?? '#7C5CFF') : colors.border,
+                flexDirection: 'row', alignItems: 'center', gap: 5,
               }}>
-              {config && <Text style={{ fontSize: 12 }}>{config.emoji}</Text>}
-              <Text style={{ color: category === c ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '500' }}>{c}</Text>
+              {config ? <Ionicons name={config.icon} size={13} color={active ? '#fff' : colors.textMuted} /> : null}
+              <Text style={{ color: active ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '500' }}>{c}</Text>
             </TouchableOpacity>
           );
         })}
@@ -140,14 +145,15 @@ export default function ConfessionsScreen({ navigation }: any) {
         {loading ? <ActivityIndicator color="#7C5CFF" size="large" style={{ marginTop: 40 }} />
           : confessions.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 40 }}>
-              <Text style={{ fontSize: 48, marginBottom: 12 }}>🤫</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={48} color={colors.textDim} style={{ marginBottom: 12 }} />
               <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>No confessions yet</Text>
               <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>
                 Be the first to confess anonymously!
               </Text>
               <TouchableOpacity onPress={() => navigation.navigate('CreateConfession')}
-                style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}>
-                <Text style={{ color: '#fff', fontWeight: '600' }}>🤫 Confess Now</Text>
+                style={{ backgroundColor: '#7C5CFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Confess Now</Text>
               </TouchableOpacity>
             </View>
           ) : confessions.map(confession => {
@@ -158,14 +164,14 @@ export default function ConfessionsScreen({ navigation }: any) {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${config.color}22`, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 18 }}>{config.emoji}</Text>
+                      <Ionicons name={config.icon} size={18} color={config.color} />
                     </View>
                     <View>
                       <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '600' }}>Anonymous</Text>
                       <Text style={{ color: colors.textDim, fontSize: 11 }}>{timeAgo(confession.created_at)}</Text>
                     </View>
                   </View>
-                  <View style={{ backgroundColor: `${config.color}22`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                  <View style={{ backgroundColor: `${config.color}22`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, alignSelf: 'flex-start' }}>
                     <Text style={{ color: config.color, fontSize: 11, fontWeight: '600' }}>{confession.category}</Text>
                   </View>
                 </View>
@@ -179,15 +185,16 @@ export default function ConfessionsScreen({ navigation }: any) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <TouchableOpacity onPress={() => toggleLike(confession.id)}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: confession.is_liked ? '#EC489922' : colors.cardAlt, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 }}>
-                    <Text style={{ fontSize: 16 }}>{confession.is_liked ? '❤️' : '🤍'}</Text>
+                    <Ionicons name={confession.is_liked ? 'heart' : 'heart-outline'} size={16} color={confession.is_liked ? '#EC4899' : colors.textMuted} />
                     <Text style={{ color: confession.is_liked ? '#EC4899' : colors.textMuted, fontSize: 13, fontWeight: '600' }}>
                       {confession.likes_count}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity onPress={() => reportConfession(confession.id)}
-                    style={{ marginLeft: 'auto', padding: 8 }}>
-                    <Text style={{ color: colors.textDim, fontSize: 12 }}>⚑ Report</Text>
+                    style={{ marginLeft: 'auto', padding: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="flag-outline" size={13} color={colors.textDim} />
+                    <Text style={{ color: colors.textDim, fontSize: 12 }}>Report</Text>
                   </TouchableOpacity>
                 </View>
               </View>

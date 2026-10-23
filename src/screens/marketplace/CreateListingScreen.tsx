@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const API_URL = 'https://campus-backend-arfy.onrender.com';
 const CATEGORIES = ['Books', 'Electronics', 'Clothes', 'Food', 'Others'];
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair'] as const;
 

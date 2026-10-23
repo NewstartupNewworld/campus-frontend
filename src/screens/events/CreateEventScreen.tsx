@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const EVENT_TYPES = ['Hackathon', 'Workshop', 'Seminar', 'Cultural', 'Sports', 'Event'];
 
 export default function CreateEventScreen({ navigation }: any) {

@@ -11,7 +11,7 @@ import { useColors } from '../../theme/ThemeProvider';
 import { requestChat, Listing } from '../../api/listings';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const API_URL = 'https://campus-backend-arfy.onrender.com';
 const { width } = Dimensions.get('window');
 
 type RootStackParamList = {

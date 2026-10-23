@@ -12,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '../../theme/ThemeProvider';
 
-const SOCKET_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const SOCKET_URL = 'https://campus-backend-arfy.onrender.com';
 
 interface GroupMessage {
   id: string; senderId: string; senderHandle: string;

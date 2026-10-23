@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 
-const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const API_URL = 'https://campus-backend-arfy.onrender.com';
 
 interface AccessRequest {
   id: string;

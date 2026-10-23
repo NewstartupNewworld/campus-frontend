@@ -1,134 +1,139 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, ActivityIndicator,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
-import { LinearGradient } from 'expo-linear-gradient';
 
-const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const API_URL = 'https://campus-backend-arfy.onrender.com';
+const PRIMARY = '#2F54EB';
 
 interface ChatPreview {
   id: string;
   listingTitle: string;
   lastMessage: string;
-  lastMessageTime: string;
+  lastTime: string;
   status: 'pending' | 'accepted' | 'rejected';
   unreadCount: number;
   role: 'buyer' | 'seller';
 }
 
-type RootStackParamList = {
-  ChatRoom: { chatId: string; listingTitle: string };
-};
+// The server sends snake_case names, so accept both spellings
+const normalize = (c: any): ChatPreview => ({
+  id: String(c.id),
+  listingTitle: c.listingTitle ?? c.listing_title ?? 'Listing',
+  lastMessage: c.lastMessage ?? c.last_message ?? '',
+  lastTime: c.lastMessageTime ?? c.last_message_time ?? c.created_at ?? '',
+  status: c.status === 'accepted' || c.status === 'rejected' ? c.status : 'pending',
+  unreadCount: Number(c.unreadCount ?? c.unread_count ?? 0) || 0,
+  role: c.role === 'seller' ? 'seller' : 'buyer',
+});
 
-const softShadow = {
-  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
+const timeLabel = (iso: string) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 };
-
-const statusLabel = (s: ChatPreview['status']) =>
-  s === 'accepted' ? 'Active' : s === 'pending' ? 'Pending' : 'Rejected';
 
 export const ChatsListScreen = () => {
   const Colors = useColors();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
   const [chats, setChats] = useState<ChatPreview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.bg },
-    header: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 },
-    headerTitle: { fontSize: 20, fontWeight: '900', color: Colors.text },
-    headerSub: { fontSize: 11.5, color: Colors.textMuted, marginTop: 1 },
-    divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginBottom: 4 },
-    list: { paddingBottom: 20, paddingTop: 6 },
-
-    // Each chat row — card style with shadow, no separator line
-    chatCard: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      marginHorizontal: 14, marginBottom: 8,
-      backgroundColor: Colors.card, borderRadius: 16,
-      padding: 12, ...softShadow,
-    },
-    chatCardUnread: { backgroundColor: Colors.card },
-
-    // Gradient avatar circle
-    avatar: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-    avatarText: { fontSize: 18 },
-
-    chatContent: { flex: 1 },
-    chatTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
-    chatTitle: { fontWeight: '700', fontSize: 13.5, color: Colors.text, flex: 1, marginRight: 8 },
-    chatTime: { fontSize: 10.5, color: Colors.textDim },
-    chatBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    chatLast: { fontSize: 12, color: Colors.textMuted, flex: 1, marginRight: 8 },
-
-    // Status pill — colored dot inline
-    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    statusDot: { width: 5, height: 5, borderRadius: 3 },
-    statusText: { fontSize: 10.5, fontWeight: '700' },
-
-    // Unread badge
-    unreadBadge: {
-      backgroundColor: Colors.accent, borderRadius: 10,
-      minWidth: 17, height: 17, alignItems: 'center',
-      justifyContent: 'center', paddingHorizontal: 4, marginLeft: 4,
-    },
-    unreadText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-
-    empty: { textAlign: 'center', color: Colors.textMuted, marginTop: 60, paddingHorizontal: 32, lineHeight: 22, fontSize: 13 },
-  });
-
-  const getStatusColor = (s: ChatPreview['status']) =>
-    s === 'accepted' ? Colors.success : s === 'pending' ? Colors.warn : Colors.danger;
-
-  useEffect(() => { loadChats(); }, []);
-
-  const loadChats = async () => {
+  const loadChats = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/chats`, { headers: { Authorization: `Bearer ${token}` } });
-      if (response.ok) { const data = await response.json(); setChats(data.chats || []); }
-    } catch (err) { console.error('Error loading chats:', err); }
-    finally { setLoading(false); }
+      const response = await fetch(`${API_URL}/api/chats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setChats((data.chats || []).map(normalize));
+        setFailed(false);
+      } else {
+        setFailed(true);
+      }
+    } catch (err) {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadChats();
+    }, [loadChats])
+  );
+
+  const statusInfo = (c: ChatPreview) => {
+    if (c.status === 'pending') {
+      return c.role === 'seller'
+        ? { label: 'New request', color: Colors.accent }
+        : { label: 'Waiting', color: Colors.warn };
+    }
+    if (c.status === 'accepted') return { label: 'Active', color: Colors.success };
+    return { label: 'Declined', color: Colors.danger };
+  };
+
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('Marketplace');
   };
 
   const renderItem = ({ item }: { item: ChatPreview }) => {
-    const statusColor = getStatusColor(item.status);
+    const st = statusInfo(item);
+    const preview =
+      item.lastMessage ||
+      (item.status === 'pending'
+        ? item.role === 'seller'
+          ? 'Someone wants to chat. Tap to accept.'
+          : 'Waiting for the seller to accept'
+        : 'No messages yet');
     return (
       <TouchableOpacity
-        style={styles.chatCard}
-        onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, listingTitle: item.listingTitle })}
+        style={styles.card}
         activeOpacity={0.8}
+        onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, listingTitle: item.listingTitle })}
+        accessibilityRole="button"
+        accessibilityLabel={`Chat about ${item.listingTitle}, ${st.label}`}
       >
-        <LinearGradient
-          colors={item.role === 'buyer' ? [Colors.accent, Colors.accentAlt] : [Colors.accentAlt, Colors.accent]}
-          style={styles.avatar}
-        >
-          <Text style={styles.avatarText}>{item.role === 'buyer' ? '🛍️' : '🏷️'}</Text>
-        </LinearGradient>
-        <View style={styles.chatContent}>
-          <View style={styles.chatTop}>
-            <Text style={styles.chatTitle} numberOfLines={1}>{item.listingTitle}</Text>
-            <Text style={styles.chatTime}>{item.lastMessageTime}</Text>
+        <View style={[styles.avatar, { backgroundColor: item.role === 'buyer' ? PRIMARY : Colors.accentAlt }]}>
+          <Ionicons name={item.role === 'buyer' ? 'bag-handle' : 'pricetag'} size={20} color="#FFFFFF" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={styles.topRow}>
+            <Text style={styles.title} numberOfLines={1}>{item.listingTitle}</Text>
+            <Text style={styles.time}>{timeLabel(item.lastTime)}</Text>
           </View>
-          <View style={styles.chatBottom}>
-            <Text style={styles.chatLast} numberOfLines={1}>
-              {item.lastMessage || (item.status === 'pending' ? 'Waiting for seller response...' : 'No messages yet')}
-            </Text>
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel(item.status)}</Text>
-              {item.unreadCount > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>{item.unreadCount}</Text>
-                </View>
-              )}
+          <Text style={styles.preview} numberOfLines={1}>{preview}</Text>
+          <View style={styles.bottomRow}>
+            <View style={[styles.chip, { backgroundColor: st.color + '2E' }]}>
+              <View style={[styles.dot, { backgroundColor: st.color }]} />
+              <Text style={[styles.chipText, { color: st.color }]}>{st.label}</Text>
             </View>
+            <Text style={styles.roleText}>{item.role === 'buyer' ? 'You are buying' : 'You are selling'}</Text>
+            {item.unreadCount > 0 && (
+              <View style={styles.unread}>
+                <Text style={styles.unreadText}>{item.unreadCount > 9 ? '9+' : item.unreadCount}</Text>
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -136,27 +141,77 @@ export const ChatsListScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>💬 Chats</Text>
-        <Text style={styles.headerSub}>Your marketplace conversations</Text>
+        <TouchableOpacity style={styles.iconBtn} onPress={goBack} accessibilityRole="button" accessibilityLabel="Go back">
+          <Ionicons name="arrow-back" size={20} color={Colors.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Chats</Text>
+          <Text style={styles.headerSub}>Your marketplace conversations</Text>
+        </View>
       </View>
-      <View style={styles.divider} />
+
       {loading ? (
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
+      ) : failed && chats.length === 0 ? (
+        <View style={styles.stateWrap}>
+          <Ionicons name="cloud-offline-outline" size={34} color={Colors.warn} />
+          <Text style={styles.stateTitle}>Could not load your chats</Text>
+          <Text style={styles.stateSub}>Check your internet and try again.</Text>
+          <TouchableOpacity style={styles.stateBtn} onPress={() => { setLoading(true); loadChats(); }}>
+            <Text style={styles.stateBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={chats}
           renderItem={renderItem}
-          keyExtractor={i => i.id}
+          keyExtractor={(i) => i.id}
           contentContainerStyle={styles.list}
-          onRefresh={loadChats}
-          refreshing={loading}
+          showsVerticalScrollIndicator={false}
+          onRefresh={() => { setRefreshing(true); loadChats(); }}
+          refreshing={refreshing}
           ListEmptyComponent={
-            <Text style={styles.empty}>No chats yet.{'\n'}Express interest in a listing to start! 👋</Text>
+            <View style={styles.stateWrap}>
+              <Ionicons name="chatbubbles-outline" size={36} color={Colors.textMuted} />
+              <Text style={styles.stateTitle}>No chats yet</Text>
+              <Text style={styles.stateSub}>Tap Chat on a listing to start a conversation with the seller.</Text>
+              <TouchableOpacity style={styles.stateBtn} onPress={() => navigation.navigate('Marketplace')}>
+                <Text style={styles.stateBtnText}>Browse the market</Text>
+              </TouchableOpacity>
+            </View>
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
+
+const makeStyles = (Colors: any) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors.bg },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
+    iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text, letterSpacing: -0.4 },
+    headerSub: { fontSize: 13, color: Colors.textMuted, marginTop: 1 },
+    list: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 120 },
+    card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, padding: 12, marginBottom: 10 },
+    avatar: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+    topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    title: { flex: 1, fontSize: 14.5, fontWeight: '700', color: Colors.text },
+    time: { fontSize: 11.5, color: Colors.textMuted },
+    preview: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+    bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+    chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+    dot: { width: 6, height: 6, borderRadius: 3 },
+    chipText: { fontSize: 11, fontWeight: '700' },
+    roleText: { flex: 1, fontSize: 11.5, color: Colors.textMuted },
+    unread: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+    unreadText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+    stateWrap: { alignItems: 'center', marginTop: 70, paddingHorizontal: 28, gap: 6 },
+    stateTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginTop: 6 },
+    stateSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+    stateBtn: { marginTop: 12, minHeight: 44, borderRadius: 22, backgroundColor: PRIMARY, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
+    stateBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  });

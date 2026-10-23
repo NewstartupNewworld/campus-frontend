@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useColors } from '../../theme/ThemeProvider';
 
-const BASE_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
 const SKILLS = ['Web Dev', 'App Dev', 'UI/UX', 'Content Writing', 'Video Editing', 'Data Entry', 'ML/AI', 'Graphic Design', 'Social Media', 'Tutoring'];
 const HOURLY_RATES = ['₹200-500/hr', '₹500-1000/hr', '₹1000-2000/hr', '₹2000+/hr'];

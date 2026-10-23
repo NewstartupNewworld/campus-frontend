@@ -1,594 +1,662 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, ActivityIndicator, Switch, Alert, Image,
-  TextInput, Modal,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Switch,
+  Alert, Image, TextInput, Modal, DeviceEventEmitter, RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useColors } from '../../theme/ThemeProvider';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  SOSButtonMode, getSOSButtonMode, setSOSButtonMode, onSOSButtonModeChange,
+} from '../../utils/sosButton';
 
-const API_URL = 'https://campus-backend-production-2dbb.up.railway.app';
+const API_URL = 'https://campus-backend-arfy.onrender.com';
+const PRIMARY = '#2F54EB';
 
-interface UserProfile {
-  id: string;
-  anonymousHandle: string;
-  college: string;
-  department: string;
-  year: number;
-  verified: boolean;
-  trustScore: number;
-  joinedAt: string;
-  studentName?: string;
-  profilePic?: string;
-  stats: {
-    listingsPosted: number;
-    successfulSales: number;
-    buzzPosts: number;
-    sosResponses: number;
-    ratingsReceived: number;
-    avgRating: number;
-  };
-  badges: Badge[];
-  recentListings: ListingPreview[];
-  recentRatings: Rating[];
-}
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-interface Badge {
-  id: string; icon: string; label: string; description: string; earned: boolean; color: string;
-}
 interface ListingPreview {
-  id: string; title: string; price: number; status: 'active' | 'sold' | 'expired'; image: string;
+  id: string; title: string; price: number | string; status: string; images?: string[];
 }
-interface Rating {
-  id: string; fromHandle: string; score: number; comment: string; listingTitle: string; createdAt: string;
+interface RatingItem {
+  score: number; comment: string; created_at: string; from_handle: string; listing_title: string;
 }
-
-const MOCK_PROFILE: UserProfile = {
-  id: 'u1', anonymousHandle: 'CampusOwl#42', college: 'IIT Kharagpur',
-  department: 'Computer Science', year: 3, verified: true, trustScore: 78,
-  joinedAt: '2024-08-01T00:00:00.000Z',
-  stats: { listingsPosted: 8, successfulSales: 5, buzzPosts: 23, sosResponses: 2, ratingsReceived: 5, avgRating: 4.4 },
-  badges: [
-    { id: 'b1', icon: '✓', label: 'Verified Student', description: 'College email verified', earned: true, color: '#3DDC84' },
-    { id: 'b2', icon: '🛍️', label: 'First Sale', description: 'Completed first transaction', earned: true, color: '#5B8DEF' },
-    { id: 'b3', icon: '⚡', label: 'Buzz Star', description: 'Posted 20+ times on Buzz', earned: true, color: '#FFB347' },
-    { id: 'b4', icon: '🚨', label: 'First Responder', description: 'Responded to 2+ SOS alerts', earned: true, color: '#FF6B6B' },
-    { id: 'b5', icon: '🏆', label: 'Top Seller', description: 'Complete 10 sales', earned: false, color: '#9398AB' },
-    { id: 'b6', icon: '🌟', label: 'Trust Legend', description: 'Reach trust score 90+', earned: false, color: '#9398AB' },
-  ],
-  recentListings: [
-    { id: 'l1', title: 'Engineering Maths Vol 3', price: 299, status: 'sold', image: '' },
-    { id: 'l2', title: 'Dell XPS Charger', price: 850, status: 'active', image: '' },
-    { id: 'l3', title: 'Python Crash Course', price: 180, status: 'active', image: '' },
-  ],
-  recentRatings: [
-    { id: 'r1', fromHandle: 'NightOwl#77', score: 5, comment: 'Super smooth transaction!', listingTitle: 'Engineering Maths Vol 3', createdAt: new Date(Date.now() - 86400000).toISOString() },
-    { id: 'r2', fromHandle: 'GhostCoder#99', score: 4, comment: 'Good seller, slight delay but all good.', listingTitle: 'Python Crash Course', createdAt: new Date(Date.now() - 432000000).toISOString() },
-  ],
-};
-
-const softShadow = {
-  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
-};
-const cardShadow = {
-  shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
-};
+interface Profile {
+  handle: string; college: string; department: string; year: string; verified: boolean;
+  trustScore: number; joinedAt: string; listings: number; sales: number; buzzPosts: number;
+  ratingsCount: number; avgRating: number;
+  recentListings: ListingPreview[]; recentRatings: RatingItem[];
+}
 
 const timeAgo = (iso: string) => {
-  const diff = Date.now() - new Date(iso).getTime();
-  const d = Math.floor(diff / 86400000);
-  if (d < 1) return 'today';
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (isNaN(d) || d < 1) return 'today';
   if (d < 7) return `${d}d ago`;
   return `${Math.floor(d / 7)}w ago`;
 };
 
-const getTrustLabel = (score: number, C: any) => {
-  if (score >= 90) return { label: 'Legend', color: '#FFD700' };
+const getTrust = (score: number, C: any) => {
+  if (score >= 90) return { label: 'Legend', color: '#EAB308' };
   if (score >= 75) return { label: 'Trusted', color: C.success };
   if (score >= 50) return { label: 'Good', color: C.accent };
-  if (score >= 25) return { label: 'New', color: C.warn };
-  return { label: 'Unrated', color: C.textDim };
+  if (score > 0) return { label: 'Building', color: C.warn };
+  return { label: 'New', color: C.textMuted };
 };
 
-const stars = (score: number) =>
-  Array.from({ length: 5 }, (_, i) => i < Math.round(score) ? '★' : '☆').join('');
-
-// Compact trust ring — smaller, no double ring
-const TrustRing = ({ score }: { score: number }) => {
-  const Colors = useColors();
-  const { label, color } = getTrustLabel(score, Colors);
-  const tr = StyleSheet.create({
-    wrap: { alignItems: 'center', gap: 6 },
-    ring: { width: 88, height: 88, borderRadius: 44, borderWidth: 4, borderColor: color, alignItems: 'center', justifyContent: 'center', backgroundColor: color + '12' },
-    score: { fontSize: 26, fontWeight: '900', color },
-    outOf: { fontSize: 10, color: Colors.textMuted },
-    labelWrap: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 3, backgroundColor: color + '22' },
-    labelText: { fontSize: 11, fontWeight: '800', color },
-  });
-  return (
-    <View style={tr.wrap}>
-      <View style={tr.ring}>
-        <Text style={tr.score}>{score}</Text>
-        <Text style={tr.outOf}>/100</Text>
-      </View>
-      <View style={tr.labelWrap}>
-        <Text style={tr.labelText}>{label}</Text>
-      </View>
-    </View>
-  );
-};
-
-// Compact badge — shadow, no border
-const BadgeCard = ({ badge }: { badge: Badge }) => {
-  const Colors = useColors();
-  const bc = StyleSheet.create({
-    card: { width: '30%', backgroundColor: Colors.card, borderRadius: 14, alignItems: 'center', padding: 10, gap: 4, ...softShadow, opacity: badge.earned ? 1 : 0.45 },
-    iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    icon: { fontSize: 19 },
-    label: { fontSize: 11, fontWeight: '800', color: badge.earned ? Colors.text : Colors.textDim, textAlign: 'center' },
-    desc: { fontSize: 9, color: Colors.textDim, textAlign: 'center', lineHeight: 13 },
-    lock: { fontSize: 10 },
-  });
-  return (
-    <View style={bc.card}>
-      <View style={[bc.iconWrap, { backgroundColor: badge.color + (badge.earned ? '22' : '11') }]}>
-        <Text style={[bc.icon, { opacity: badge.earned ? 1 : 0.4 }]}>{badge.icon}</Text>
-      </View>
-      <Text style={bc.label}>{badge.label}</Text>
-      <Text style={bc.desc} numberOfLines={2}>{badge.description}</Text>
-      {!badge.earned && <Text style={bc.lock}>🔒</Text>}
-    </View>
-  );
-};
-
-// Compact rating card — shadow, no border
-const RatingCard = ({ rating }: { rating: Rating }) => {
-  const Colors = useColors();
-  const rc = StyleSheet.create({
-    card: { backgroundColor: Colors.card, borderRadius: 14, padding: 13, marginBottom: 9, ...softShadow },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-    handle: { fontWeight: '700', fontSize: 12.5, color: Colors.accent, flex: 1 },
-    stars: { fontSize: 12, color: Colors.warn },
-    time: { fontSize: 10, color: Colors.textDim },
-    listing: { fontSize: 11, color: Colors.textMuted, marginBottom: 5 },
-    comment: { fontSize: 13, color: Colors.text, lineHeight: 18 },
-  });
-  return (
-    <View style={rc.card}>
-      <View style={rc.header}>
-        <Text style={rc.handle}>{rating.fromHandle}</Text>
-        <Text style={rc.stars}>{stars(rating.score)}</Text>
-        <Text style={rc.time}>{timeAgo(rating.createdAt)}</Text>
-      </View>
-      <Text style={rc.listing}>Re: {rating.listingTitle}</Text>
-      <Text style={rc.comment}>{rating.comment}</Text>
-    </View>
-  );
-};
-
-// Listing row — dot separator instead of bottom border line
-const ListingRow = ({ listing }: { listing: ListingPreview }) => {
-  const Colors = useColors();
-  const statusColor = listing.status === 'sold' ? Colors.success : listing.status === 'active' ? Colors.accent : Colors.textDim;
-  const lr = StyleSheet.create({
-    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
-    thumb: { width: 38, height: 38, borderRadius: 10, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', ...softShadow },
-    info: { flex: 1 },
-    title: { fontWeight: '700', fontSize: 13, color: Colors.text },
-    price: { fontSize: 12, color: Colors.accent, fontWeight: '700', marginTop: 1 },
-    statusBadge: { borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: statusColor + '22' },
-    statusText: { fontSize: 11, fontWeight: '700', color: statusColor },
-  });
-  return (
-    <View style={lr.row}>
-      <View style={lr.thumb}><Text style={{ fontSize: 18 }}>📦</Text></View>
-      <View style={lr.info}>
-        <Text style={lr.title} numberOfLines={1}>{listing.title}</Text>
-        <Text style={lr.price}>₹{listing.price}</Text>
-      </View>
-      <View style={lr.statusBadge}>
-        <Text style={lr.statusText}>{listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}</Text>
-      </View>
-    </View>
-  );
-};
-
-const SettingsSection = ({ onLogout, onCollegeAccess }: { onLogout: () => void; onCollegeAccess: () => void }) => {
-  const Colors = useColors();
-  const { isDark, toggleTheme } = useTheme();
-  const [notifications, setNotifications] = useState(true);
-  const [anonymousMode, setAnonymousMode] = useState(true);
-
-  const ss = StyleSheet.create({
-    wrap: { paddingHorizontal: 16, marginBottom: 20 },
-    title: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 10 },
-    card: { backgroundColor: Colors.card, borderRadius: 16, overflow: 'hidden', ...softShadow },
-    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13 },
-    rowLabel: { fontSize: 14, color: Colors.text, fontWeight: '600' },
-    divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 16 },
-    collegeAccessBtn: { marginTop: 10, backgroundColor: Colors.accent + '18', borderRadius: 14, paddingVertical: 13, alignItems: 'center', ...softShadow },
-    collegeAccessText: { color: Colors.accent, fontWeight: '800', fontSize: 14 },
-    logoutBtn: { marginTop: 10, backgroundColor: Colors.danger + '18', borderRadius: 14, paddingVertical: 13, alignItems: 'center', ...softShadow },
-    logoutText: { color: Colors.danger, fontWeight: '800', fontSize: 14 },
-  });
-
-  const Row = ({ label, value, onToggle }: { label: string; value: boolean; onToggle: (v: boolean) => void }) => (
-    <View style={ss.row}>
-      <Text style={ss.rowLabel}>{label}</Text>
-      <Switch value={value} onValueChange={onToggle} trackColor={{ false: Colors.border, true: Colors.accent + '88' }} thumbColor={value ? Colors.accent : Colors.textDim} />
-    </View>
-  );
-
-  return (
-    <View style={ss.wrap}>
-      <Text style={ss.title}>Settings</Text>
-      <View style={ss.card}>
-        <Row label="Push Notifications" value={notifications} onToggle={setNotifications} />
-        <View style={ss.divider} />
-        <Row label="Dark Mode" value={isDark} onToggle={toggleTheme} />
-        <View style={ss.divider} />
-        <Row label="Anonymous Mode on Buzz" value={anonymousMode} onToggle={setAnonymousMode} />
-      </View>
-      <TouchableOpacity style={ss.collegeAccessBtn} onPress={onCollegeAccess}>
-        <Text style={ss.collegeAccessText}>🏫 Cross-College Access</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={ss.logoutBtn} onPress={onLogout}>
-        <Text style={ss.logoutText}>🚪 Log Out</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
+// Badges are earned from real numbers only
+const buildBadges = (p: Profile): { id: string; icon: IconName; label: string; how: string; earned: boolean; color: string }[] => [
+  { id: 'verified', icon: 'checkmark-circle', label: 'Verified student', how: 'Verify your college', earned: p.verified, color: '#22C55E' },
+  { id: 'firstsale', icon: 'bag-check', label: 'First sale', how: 'Sell your first item', earned: p.sales >= 1, color: '#4F7CFF' },
+  { id: 'buzz', icon: 'flash', label: 'Buzz star', how: 'Post 20 times on Buzz', earned: p.buzzPosts >= 20, color: '#F59E0B' },
+  { id: 'topseller', icon: 'trophy', label: 'Top seller', how: 'Complete 10 sales', earned: p.sales >= 10, color: '#EAB308' },
+  { id: 'rated', icon: 'star', label: 'Well rated', how: '4+ stars from 3 buyers', earned: p.ratingsCount >= 3 && p.avgRating >= 4, color: '#F97316' },
+  { id: 'legend', icon: 'ribbon', label: 'Trust legend', how: 'Reach trust score 90', earned: p.trustScore >= 90, color: '#A78BFA' },
+];
 
 export const ProfileScreen = () => {
   const Colors = useColors();
-  const navigation = useNavigation();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { isDark, toggleTheme } = useTheme();
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'listings' | 'ratings' | 'badges'>('listings');
   const [profilePic, setProfilePic] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState('');
   const [editNameModal, setEditNameModal] = useState(false);
   const [editNameText, setEditNameText] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.bg },
-    scroll: { paddingBottom: 40 },
-
-    // Header — tighter, no bottom border, uses hairline divider
-    profileHeader: { flexDirection: 'row', gap: 12, padding: 14, paddingBottom: 16 },
-    bellBtn: { position: 'absolute', top: 14, right: 14, width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', zIndex: 10, ...softShadow },
-    bellIcon: { fontSize: 15 },
-    bellBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: Colors.danger, borderRadius: 8, minWidth: 15, height: 15, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-    bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
-    avatarWrap: { position: 'relative' },
-    avatarImage: { width: 64, height: 64, borderRadius: 20 },
-    avatar: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-    avatarText: { fontSize: 22, fontWeight: '900', color: '#fff' },
-    avatarEditBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: Colors.card, borderRadius: 9, width: 18, height: 18, alignItems: 'center', justifyContent: 'center', ...softShadow },
-    profileInfo: { flex: 1, justifyContent: 'center', gap: 2 },
-    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-    handle: { fontSize: 17, fontWeight: '900', color: Colors.text },
-    editNameBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    realName: { fontSize: 12.5, color: Colors.textMuted, fontWeight: '600' },
-    editNameIcon: { fontSize: 10 },
-    verifiedBadge: { backgroundColor: Colors.success + '22', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-    verifiedText: { fontSize: 10, fontWeight: '700', color: Colors.success },
-    college: { fontSize: 12.5, color: Colors.accent, fontWeight: '700' },
-    dept: { fontSize: 11.5, color: Colors.textMuted },
-    joined: { fontSize: 10.5, color: Colors.textDim },
-    dividerLine: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 16, marginBottom: 10 },
-
-    // Trust card — shadow, no border
-    trustCard: { flexDirection: 'row', gap: 14, alignItems: 'center', marginHorizontal: 16, marginBottom: 12, padding: 16, backgroundColor: Colors.card, borderRadius: 18, ...cardShadow },
-    trustInfo: { flex: 1 },
-    trustTitle: { fontWeight: '800', fontSize: 14, color: Colors.text, marginBottom: 3 },
-    trustDesc: { fontSize: 11, color: Colors.textMuted, lineHeight: 15, marginBottom: 8 },
-    trustBreakdown: { gap: 5 },
-    trustItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    trustItemDot: { fontSize: 11, fontWeight: '800', width: 14 },
-    trustItemLabel: { fontSize: 11, color: Colors.textMuted, flex: 1 },
-    trustItemVal: { fontSize: 11, fontWeight: '700', color: Colors.text },
-
-    // Compact stat cards — 4 in a row, shadow, no border
-    statsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 10 },
-    statCard: { flex: 1, backgroundColor: Colors.card, borderRadius: 14, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, gap: 2, ...softShadow },
-    statIcon: { fontSize: 17 },
-    statValue: { fontSize: 17, fontWeight: '900', color: Colors.text },
-    statLabel: { fontSize: 9.5, color: Colors.textMuted, textAlign: 'center' },
-
-    // Rating bar — shadow, no border
-    ratingBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 12, backgroundColor: Colors.card, borderRadius: 14, padding: 11, ...softShadow },
-    ratingBarLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600', flex: 1 },
-    ratingBarStars: { fontSize: 13, color: Colors.warn },
-    ratingBarVal: { fontSize: 11.5, color: Colors.text, fontWeight: '700' },
-
-    // Tabs — shadow, no border
-    tabs: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: Colors.card, borderRadius: 14, padding: 4, ...softShadow },
-    tab: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 10 },
-    tabActive: { backgroundColor: Colors.accent },
-    tabText: { fontSize: 13, fontWeight: '700', color: Colors.textMuted },
-    tabTextActive: { color: '#fff' },
-    tabContent: { paddingHorizontal: 16, marginBottom: 20 },
-    badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
-    empty: { textAlign: 'center', color: Colors.textMuted, paddingVertical: 30, fontSize: 13 },
-
-    // Edit name modal — shadow, no border
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
-    modalCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 24, width: '85%', ...cardShadow },
-    modalTitle: { fontSize: 17, fontWeight: '800', color: Colors.text, marginBottom: 14 },
-    modalInput: { backgroundColor: Colors.bg, borderRadius: 12, padding: 13, color: Colors.text, fontSize: 15, marginBottom: 14 },
-    modalBtns: { flexDirection: 'row', gap: 12 },
-    modalCancel: { flex: 1, backgroundColor: Colors.bg, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-    modalCancelText: { color: Colors.text, fontWeight: '700' },
-    modalSave: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-    modalSaveText: { color: '#fff', fontWeight: '800' },
-  });
+  const [sosMode, setSosMode] = useState<SOSButtonMode>('visible');
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const userStr = await AsyncStorage.getItem('user');
-        const token = await AsyncStorage.getItem('token');
-        const savedPic = await AsyncStorage.getItem('profilePic');
-        if (savedPic) setProfilePic(savedPic);
-        if (token) {
-          const response = await fetch(`${API_URL}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } });
-          if (response.ok) {
-            const data = await response.json();
-            setProfile({
-              ...MOCK_PROFILE,
-              id: data.id,
-              anonymousHandle: data.anonymous_handle,
-              college: data.college,
-              department: data.department,
-              verified: data.verified,
-              trustScore: data.trust_score || 0,
-              joinedAt: data.created_at,
-              studentName: data.student_name || '',
-              stats: {
-                listingsPosted: parseInt(data.listings_count) || 0,
-                successfulSales: parseInt(data.sales_count) || 0,
-                buzzPosts: parseInt(data.buzz_count) || 0,
-                sosResponses: 0,
-                ratingsReceived: parseInt(data.ratings_count) || 0,
-                avgRating: parseFloat(data.avg_rating) || 0,
-              },
-              recentListings: data.recentListings || [],
-              recentRatings: data.recentRatings?.map((r: any) => ({
-                id: r.id || Date.now().toString(),
-                fromHandle: r.from_handle,
-                score: r.score,
-                comment: r.comment,
-                listingTitle: r.listing_title,
-                createdAt: r.created_at,
-              })) || [],
-            });
-            setEditNameText(data.student_name || '');
-            return;
-          }
-        }
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          setEditNameText(user.student_name || '');
-          setProfile({
-            ...MOCK_PROFILE,
-            id: user.id,
-            anonymousHandle: user.anonymous_handle || MOCK_PROFILE.anonymousHandle,
-            college: user.college || MOCK_PROFILE.college,
-            department: user.department || MOCK_PROFILE.department,
-            studentName: user.student_name || '',
-            verified: user.verified || false,
-          });
-        }
-      } catch (e) {
-        setProfile(MOCK_PROFILE);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-
-    const loadUnread = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await response.json();
-        if (response.ok) setUnreadCount(data.unreadCount || 0);
-      } catch (e) {}
-    };
-    loadUnread();
+    getSOSButtonMode().then(setSosMode);
+    return onSOSButtonModeChange(setSosMode);
   }, []);
+
+  const load = useCallback(async () => {
+    try {
+      const [token, userStr, savedPic] = await Promise.all([
+        AsyncStorage.getItem('token'),
+        AsyncStorage.getItem('user'),
+        AsyncStorage.getItem('profilePic'),
+      ]);
+      if (savedPic) setProfilePic(savedPic);
+      const stored = userStr ? JSON.parse(userStr) : {};
+      setStudentName(stored.student_name || '');
+
+      const headers = { Authorization: `Bearer ${token}` };
+      const [meRes, nRes] = await Promise.allSettled([
+        fetch(`${API_URL}/api/users/me`, { headers }),
+        fetch(`${API_URL}/api/notifications`, { headers }),
+      ]);
+
+      if (nRes.status === 'fulfilled' && nRes.value.ok) {
+        const n = await nRes.value.json();
+        setUnreadCount(n.unreadCount || 0);
+      }
+
+      if (meRes.status === 'fulfilled' && meRes.value.ok) {
+        const d = await meRes.value.json();
+        setProfile({
+          handle: d.anonymous_handle || stored.anonymous_handle || '',
+          college: d.college || stored.college || '',
+          department: d.department || stored.department || '',
+          year: d.year != null ? String(d.year) : stored.year != null ? String(stored.year) : '',
+          verified: !!d.verified,
+          trustScore: Number(d.trust_score) || 0,
+          joinedAt: d.created_at,
+          listings: parseInt(d.listings_count) || 0,
+          sales: parseInt(d.sales_count) || 0,
+          buzzPosts: parseInt(d.buzz_count) || 0,
+          ratingsCount: parseInt(d.ratings_count) || 0,
+          avgRating: parseFloat(d.avg_rating) || 0,
+          recentListings: d.recentListings || [],
+          recentRatings: d.recentRatings || [],
+        });
+        setFailed(false);
+      } else {
+        setFailed(true);
+      }
+    } catch (e) {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const handlePickProfilePic = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to your photo library.'); return; }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to your photos.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7,
+      });
       if (!result.canceled && result.assets[0]) {
         const uri = result.assets[0].uri;
         setProfilePic(uri);
         await AsyncStorage.setItem('profilePic', uri);
       }
-    } catch (err) { Alert.alert('Error', 'Failed to pick image.'); }
+    } catch (err) {
+      Alert.alert('Error', 'Could not pick the photo.');
+    }
   };
 
   const handleSaveName = async () => {
     try {
       const userStr = await AsyncStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        user.student_name = editNameText;
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-        setProfile(prev => prev ? { ...prev, studentName: editNameText } : prev);
-      }
+      const user = userStr ? JSON.parse(userStr) : {};
+      user.student_name = editNameText.trim();
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      setStudentName(editNameText.trim());
       setEditNameModal(false);
-    } catch (e) { Alert.alert('Error', 'Failed to save name.'); }
+    } catch (e) {
+      Alert.alert('Error', 'Could not save your name.');
+    }
+  };
+
+  const toggleSOS = (on: boolean) => {
+    if (on) {
+      setSOSButtonMode('visible');
+      return;
+    }
+    Alert.alert(
+      'Hide the SOS button?',
+      'The floating button will disappear. You can still send an alert from Profile > Emergency (SOS).',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Hide', style: 'destructive', onPress: () => setSOSButtonMode('hidden') },
+      ]
+    );
   };
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+    Alert.alert('Log out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: async () => {
-        await AsyncStorage.removeItem('token');
-        await AsyncStorage.removeItem('user');
-        await AsyncStorage.removeItem('profilePic');
-        navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
-      }},
+      {
+        text: 'Log out', style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.multiRemove(['token', 'user', 'profilePic']);
+          DeviceEventEmitter.emit('auth:logout');
+        },
+      },
     ]);
   };
 
-  if (loading) return <SafeAreaView style={styles.container}><ActivityIndicator color={Colors.accent} style={{ marginTop: 80 }} /></SafeAreaView>;
-  if (!profile) return null;
+  const Header = () => (
+    <View style={styles.topBar}>
+      <Text style={styles.title}>Profile</Text>
+      <TouchableOpacity
+        style={styles.iconBtn}
+        onPress={() => navigation.navigate('Notifications')}
+        accessibilityRole="button"
+        accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+      >
+        <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+        {unreadCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
 
-  const { stats, badges, recentListings, recentRatings } = profile;
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ActivityIndicator color={Colors.accent} style={{ marginTop: 80 }} />
+      </View>
+    );
+  }
+
+  if (failed || !profile) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Header />
+        <View style={styles.stateWrap}>
+          <Ionicons name="cloud-offline-outline" size={34} color={Colors.warn} />
+          <Text style={styles.stateTitle}>Could not load your profile</Text>
+          <Text style={styles.stateSub}>Check your internet and try again.</Text>
+          <TouchableOpacity style={styles.stateBtn} onPress={() => { setLoading(true); load(); }}>
+            <Text style={styles.stateBtnText}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.linkRow} onPress={handleLogout}>
+            <Text style={{ color: Colors.danger, fontWeight: '700' }}>Log out</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  const trust = getTrust(profile.trustScore, Colors);
+  const badges = buildBadges(profile);
+  const earned = badges.filter((b) => b.earned).length;
+  const yearLabel = profile.year ? (/year/i.test(profile.year) ? profile.year : `Year ${profile.year}`) : '';
+  const meta = [profile.department, yearLabel].filter(Boolean).join('  |  ');
+  const initials = (studentName || profile.handle || '?').slice(0, 2).toUpperCase();
+  const joined = profile.joinedAt
+    ? new Date(profile.joinedAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    : '';
+
+  const stats: { icon: IconName; value: number; label: string; onPress: () => void; color: string }[] = [
+    { icon: 'pricetag', value: profile.listings, label: 'Listed', color: Colors.accent, onPress: () => setActiveTab('listings') },
+    { icon: 'checkmark-circle', value: profile.sales, label: 'Sold', color: Colors.success, onPress: () => setActiveTab('listings') },
+    { icon: 'flash', value: profile.buzzPosts, label: 'Buzz posts', color: Colors.warn, onPress: () => navigation.navigate('Buzz') },
+    { icon: 'star', value: profile.ratingsCount, label: 'Ratings', color: '#EAB308', onPress: () => setActiveTab('ratings') },
+  ];
+
+  const Row = ({
+    icon, color, label, sub, onPress, right,
+  }: { icon: IconName; color: string; label: string; sub?: string; onPress?: () => void; right?: React.ReactNode }) => (
+    <TouchableOpacity
+      style={styles.row}
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={0.7}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={label}
+    >
+      <View style={[styles.rowIcon, { backgroundColor: color + '2E' }]}>
+        <Ionicons name={icon} size={20} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        {!!sub && <Text style={styles.rowSub}>{sub}</Text>}
+      </View>
+      {right ?? (onPress ? <Ionicons name="chevron-forward" size={18} color={Colors.textDim} /> : null)}
+    </TouchableOpacity>
+  );
+
+  const switchProps = (value: boolean) => ({
+    value,
+    trackColor: { false: Colors.border, true: Colors.accent + '88' },
+    thumbColor: value ? Colors.accent : Colors.textMuted,
+  });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.accent} />
+        }
+      >
+        <Header />
 
-        {/* Profile header */}
-        <View style={styles.profileHeader}>
-          <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications' as never)}>
-            <Text style={styles.bellIcon}>🔔</Text>
-            {unreadCount > 0 && (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+        {/* Identity */}
+        <View style={styles.identity}>
+          <TouchableOpacity onPress={handlePickProfilePic} accessibilityRole="button" accessibilityLabel="Change profile photo">
+            {profilePic ? (
+              <Image source={{ uri: profilePic }} style={styles.avatarImg} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials}</Text>
               </View>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handlePickProfilePic} style={styles.avatarWrap}>
-            {profilePic ? (
-              <Image source={{ uri: profilePic }} style={styles.avatarImage} />
-            ) : (
-              <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.avatar}>
-                <Text style={styles.avatarText}>{profile.anonymousHandle.slice(0, 2).toUpperCase()}</Text>
-              </LinearGradient>
-            )}
-            <View style={styles.avatarEditBadge}><Text style={{ fontSize: 9 }}>📷</Text></View>
-          </TouchableOpacity>
-          <View style={styles.profileInfo}>
-            <View style={styles.nameRow}>
-              <Text style={styles.handle}>{profile.anonymousHandle}</Text>
-              {profile.verified && (
-                <View style={styles.verifiedBadge}>
-                  <Text style={styles.verifiedText}>✓ Verified</Text>
-                </View>
-              )}
+            <View style={styles.camBadge}>
+              <Ionicons name="camera" size={12} color="#FFFFFF" />
             </View>
-            <TouchableOpacity onPress={() => setEditNameModal(true)} style={styles.editNameBtn}>
-              <Text style={styles.realName}>{profile.studentName || '✏️ Add your name'}</Text>
-              <Text style={styles.editNameIcon}>✏️</Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={styles.handle} numberOfLines={1}>{profile.handle}</Text>
+            <TouchableOpacity
+              onPress={() => { setEditNameText(studentName); setEditNameModal(true); }}
+              style={styles.nameBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Edit your name"
+            >
+              <Text style={styles.nameText} numberOfLines={1}>{studentName || 'Add your name'}</Text>
+              <Ionicons name="pencil" size={12} color={Colors.textMuted} />
             </TouchableOpacity>
-            <Text style={styles.college}>{profile.college}</Text>
-            <Text style={styles.dept}>{profile.department} • Year {profile.year}</Text>
-            <Text style={styles.joined}>
-              Member since {new Date(profile.joinedAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-            </Text>
+            <Text style={styles.college} numberOfLines={1}>{profile.college}</Text>
+            {!!meta && <Text style={styles.meta}>{meta}</Text>}
+            <View style={styles.chipRow}>
+              <View style={[styles.chip, { backgroundColor: (profile.verified ? Colors.success : Colors.textMuted) + '2E' }]}>
+                <Ionicons
+                  name={profile.verified ? 'checkmark-circle' : 'alert-circle-outline'}
+                  size={12}
+                  color={profile.verified ? Colors.success : Colors.textMuted}
+                />
+                <Text style={[styles.chipText, { color: profile.verified ? Colors.success : Colors.textMuted }]}>
+                  {profile.verified ? 'Verified' : 'Not verified'}
+                </Text>
+              </View>
+              {!!joined && <Text style={styles.meta}>Since {joined}</Text>}
+            </View>
           </View>
         </View>
 
-        <View style={styles.dividerLine} />
-
         {/* Trust score */}
-        <View style={styles.trustCard}>
-          <TrustRing score={profile.trustScore} />
-          <View style={styles.trustInfo}>
-            <Text style={styles.trustTitle}>Trust Score</Text>
-            <Text style={styles.trustDesc}>Based on sales, ratings, activity, and SOS responses.</Text>
-            <View style={styles.trustBreakdown}>
+        <View style={styles.card}>
+          <View style={styles.trustRow}>
+            <View style={[styles.ring, { borderColor: trust.color, backgroundColor: trust.color + '14' }]}>
+              <Text style={[styles.ringScore, { color: trust.color }]}>{profile.trustScore}</Text>
+              <Text style={styles.ringOf}>/100</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.trustTitleRow}>
+                <Text style={styles.cardTitle}>Trust score</Text>
+                <View style={[styles.chip, { backgroundColor: trust.color + '2E' }]}>
+                  <Text style={[styles.chipText, { color: trust.color }]}>{trust.label}</Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Grows with sales and good ratings from other students.</Text>
               {[
-                { label: 'Sales', val: `${stats.successfulSales}/10`, done: stats.successfulSales >= 10 },
-                { label: 'Avg Rating', val: `${stats.avgRating}★`, done: stats.avgRating >= 4 },
+                { label: 'Sales', val: `${profile.sales} of 10`, done: profile.sales >= 10 },
+                { label: 'Average rating', val: profile.ratingsCount > 0 ? profile.avgRating.toFixed(1) : 'No ratings yet', done: profile.avgRating >= 4 && profile.ratingsCount > 0 },
                 { label: 'Verified', val: profile.verified ? 'Yes' : 'No', done: profile.verified },
-              ].map(item => (
+              ].map((item) => (
                 <View key={item.label} style={styles.trustItem}>
-                  <Text style={[styles.trustItemDot, { color: item.done ? Colors.success : Colors.textDim }]}>{item.done ? '✓' : '○'}</Text>
-                  <Text style={styles.trustItemLabel}>{item.label}</Text>
-                  <Text style={styles.trustItemVal}>{item.val}</Text>
+                  <Ionicons
+                    name={item.done ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={15}
+                    color={item.done ? Colors.success : Colors.textDim}
+                  />
+                  <Text style={styles.trustLabel}>{item.label}</Text>
+                  <Text style={styles.trustVal}>{item.val}</Text>
                 </View>
               ))}
             </View>
           </View>
         </View>
 
-        {/* Compact stats row */}
+        {/* Stats */}
         <View style={styles.statsRow}>
-          {[
-            { icon: '🛍️', value: stats.listingsPosted, label: 'Listed', tab: 'listings' },
-            { icon: '✅', value: stats.successfulSales, label: 'Sold', tab: 'listings' },
-            { icon: '⚡', value: stats.buzzPosts, label: 'Posts', tab: 'badges' },
-            { icon: '🚨', value: stats.sosResponses, label: 'SOS', tab: 'badges' },
-          ].map(stat => (
-            <TouchableOpacity key={stat.label} style={styles.statCard} onPress={() => setActiveTab(stat.tab as any)} activeOpacity={0.7}>
-              <Text style={styles.statIcon}>{stat.icon}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+          {stats.map((s) => (
+            <TouchableOpacity
+              key={s.label}
+              style={styles.statCard}
+              onPress={s.onPress}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`${s.value} ${s.label}`}
+            >
+              <Ionicons name={s.icon} size={18} color={s.color} />
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Rating bar */}
-        <TouchableOpacity style={styles.ratingBar} onPress={() => setActiveTab('ratings')} activeOpacity={0.7}>
-          <Text style={styles.ratingBarLabel}>Avg Rating</Text>
-          <Text style={styles.ratingBarStars}>{stars(stats.avgRating)}</Text>
-          <Text style={styles.ratingBarVal}>{stats.avgRating} ({stats.ratingsReceived})</Text>
-        </TouchableOpacity>
-
         {/* Tabs */}
         <View style={styles.tabs}>
-          {(['listings', 'ratings', 'badges'] as const).map(tab => (
-            <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)}>
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
+          {([
+            { key: 'listings', label: 'Listings' },
+            { key: 'ratings', label: 'Ratings' },
+            { key: 'badges', label: `Badges ${earned}/${badges.length}` },
+          ] as const).map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              style={[styles.tab, activeTab === t.key && styles.tabActive]}
+              onPress={() => setActiveTab(t.key)}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.tabText, activeTab === t.key && styles.tabTextActive]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.tabContent}>
           {activeTab === 'listings' && (
-            <>
-              {recentListings.map(l => <ListingRow key={l.id} listing={l} />)}
-              {recentListings.length === 0 && <Text style={styles.empty}>No listings yet. Start selling! 🛍️</Text>}
-            </>
+            profile.recentListings.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Ionicons name="storefront-outline" size={26} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>You have not listed anything yet.</Text>
+                <TouchableOpacity
+                  style={styles.stateBtn}
+                  onPress={() => navigation.navigate('Marketplace', { screen: 'CreateListing' })}
+                >
+                  <Text style={styles.stateBtnText}>Sell something</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              profile.recentListings.map((l) => {
+                const sold = l.status === 'sold';
+                const color = sold ? Colors.success : Colors.accent;
+                const img = Array.isArray(l.images) && l.images.length ? l.images[0] : null;
+                return (
+                  <View key={l.id} style={styles.listingRow}>
+                    {img ? (
+                      <Image source={{ uri: img }} style={styles.thumb} />
+                    ) : (
+                      <View style={[styles.thumb, styles.thumbEmpty]}>
+                        <Ionicons name="image-outline" size={18} color={Colors.textDim} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowLabel} numberOfLines={1}>{l.title}</Text>
+                      <Text style={styles.price}>{'\u20B9'}{Math.round(Number(l.price))}</Text>
+                    </View>
+                    <View style={[styles.chip, { backgroundColor: color + '2E' }]}>
+                      <Text style={[styles.chipText, { color }]}>{sold ? 'Sold' : 'Active'}</Text>
+                    </View>
+                  </View>
+                );
+              })
+            )
           )}
+
           {activeTab === 'ratings' && (
-            <>
-              {recentRatings.map(r => <RatingCard key={r.id} rating={r} />)}
-              {recentRatings.length === 0 && <Text style={styles.empty}>No ratings yet. Complete a sale to get rated!</Text>}
-            </>
+            profile.recentRatings.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Ionicons name="star-outline" size={26} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>No ratings yet. Complete a sale to get rated.</Text>
+              </View>
+            ) : (
+              profile.recentRatings.map((r, i) => (
+                <View key={i} style={styles.ratingCard}>
+                  <View style={styles.ratingTop}>
+                    <Text style={styles.ratingHandle} numberOfLines={1}>{r.from_handle}</Text>
+                    <View style={{ flexDirection: 'row' }}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Ionicons key={n} name={n <= Math.round(r.score) ? 'star' : 'star-outline'} size={13} color="#EAB308" />
+                      ))}
+                    </View>
+                    <Text style={styles.meta}>{timeAgo(r.created_at)}</Text>
+                  </View>
+                  {!!r.listing_title && <Text style={styles.meta}>About {r.listing_title}</Text>}
+                  {!!r.comment && <Text style={styles.ratingComment}>{r.comment}</Text>}
+                </View>
+              ))
+            )
           )}
+
           {activeTab === 'badges' && (
-            <View style={styles.badgesGrid}>
-              {badges.map(b => <BadgeCard key={b.id} badge={b} />)}
+            <View style={styles.badgeGrid}>
+              {badges.map((b) => (
+                <View key={b.id} style={[styles.badgeCard, !b.earned && { opacity: 0.55 }]}>
+                  <View style={[styles.badgeIcon, { backgroundColor: (b.earned ? b.color : Colors.textMuted) + '2E' }]}>
+                    <Ionicons name={b.earned ? b.icon : 'lock-closed'} size={20} color={b.earned ? b.color : Colors.textMuted} />
+                  </View>
+                  <Text style={styles.badgeLabel}>{b.label}</Text>
+                  <Text style={styles.badgeHow}>{b.earned ? 'Earned' : b.how}</Text>
+                </View>
+              ))}
             </View>
           )}
         </View>
 
-        <SettingsSection onLogout={handleLogout} onCollegeAccess={() => navigation.navigate('CollegeAccess' as never)} />
+        {/* Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          <View style={styles.settingsCard}>
+            <Row
+              icon="notifications"
+              color={Colors.accent}
+              label="Notifications"
+              sub={unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'}
+              onPress={() => navigation.navigate('Notifications')}
+            />
+            <View style={styles.divider} />
+            <Row
+              icon="moon"
+              color={Colors.accentAlt}
+              label="Dark mode"
+              right={<Switch {...switchProps(isDark)} onValueChange={toggleTheme} accessibilityLabel="Dark mode" />}
+            />
+            <View style={styles.divider} />
+            <Row
+              icon="warning"
+              color={Colors.danger}
+              label="Show SOS button"
+              sub="Hold it for 2 seconds to send an alert"
+              right={<Switch {...switchProps(sosMode !== 'hidden')} onValueChange={toggleSOS} accessibilityLabel="Show SOS button" />}
+            />
+            <View style={styles.divider} />
+            <Row
+              icon="alert-circle"
+              color={Colors.danger}
+              label="Emergency (SOS)"
+              sub="Open the emergency screen"
+              onPress={() => navigation.navigate('SOS')}
+            />
+            <View style={styles.divider} />
+            <Row
+              icon="school"
+              color={Colors.success}
+              label="Cross-college access"
+              sub="Ask to see another college"
+              onPress={() => navigation.navigate('CollegeAccess')}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} accessibilityRole="button">
+            <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
+            <Text style={styles.logoutText}>Log out</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
-      <Modal visible={editNameModal} transparent animationType="fade">
+      <Modal visible={editNameModal} transparent animationType="fade" onRequestClose={() => setEditNameModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit your name</Text>
-            <TextInput style={styles.modalInput} value={editNameText} onChangeText={setEditNameText} placeholder="Your real name" placeholderTextColor={Colors.textDim} autoFocus />
-            <View style={styles.modalBtns}>
+            <Text style={styles.modalTitle}>Your name</Text>
+            <Text style={styles.cardSub}>Only you see this. Other students see your anonymous handle.</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editNameText}
+              onChangeText={setEditNameText}
+              placeholder="Your name"
+              placeholderTextColor={Colors.textMuted}
+              autoFocus
+            />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity style={styles.modalCancel} onPress={() => setEditNameModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={{ color: Colors.text, fontWeight: '700' }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSave} onPress={handleSaveName}>
-                <Text style={styles.modalSaveText}>Save</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: '800' }}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
+
+const makeStyles = (Colors: any) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors.bg },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+    title: { fontSize: 26, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
+    iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+    badge: { position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.danger, borderWidth: 2, borderColor: Colors.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+    badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+
+    identity: { flexDirection: 'row', gap: 14, paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center' },
+    avatar: { width: 72, height: 72, borderRadius: 22, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
+    avatarImg: { width: 72, height: 72, borderRadius: 22 },
+    avatarText: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
+    camBadge: { position: 'absolute', right: -4, bottom: -4, width: 24, height: 24, borderRadius: 12, backgroundColor: Colors.accent, borderWidth: 2, borderColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
+    handle: { fontSize: 20, fontWeight: '800', color: Colors.text },
+    nameBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 28 },
+    nameText: { fontSize: 13.5, color: Colors.textMuted, fontWeight: '600' },
+    college: { fontSize: 13, color: Colors.accent, fontWeight: '700' },
+    meta: { fontSize: 12, color: Colors.textMuted },
+    chipRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+    chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+    chipText: { fontSize: 11, fontWeight: '700' },
+
+    card: { marginHorizontal: 16, marginTop: 6, backgroundColor: Colors.card, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, padding: 16 },
+    trustRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+    ring: { width: 84, height: 84, borderRadius: 42, borderWidth: 5, alignItems: 'center', justifyContent: 'center' },
+    ringScore: { fontSize: 26, fontWeight: '900' },
+    ringOf: { fontSize: 10, color: Colors.textMuted },
+    trustTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    cardTitle: { fontSize: 16, fontWeight: '800', color: Colors.text },
+    cardSub: { fontSize: 12.5, color: Colors.textMuted, lineHeight: 17, marginTop: 3, marginBottom: 8 },
+    trustItem: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 24 },
+    trustLabel: { flex: 1, fontSize: 12.5, color: Colors.textMuted },
+    trustVal: { fontSize: 12.5, fontWeight: '700', color: Colors.text },
+
+    statsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 12 },
+    statCard: { flex: 1, minHeight: 84, backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 10 },
+    statValue: { fontSize: 18, fontWeight: '800', color: Colors.text },
+    statLabel: { fontSize: 11.5, color: Colors.textMuted },
+
+    tabs: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 4 },
+    tab: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+    tabActive: { backgroundColor: PRIMARY },
+    tabText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+    tabTextActive: { color: '#FFFFFF', fontWeight: '700' },
+    tabContent: { paddingHorizontal: 16, marginTop: 12 },
+
+    emptyBox: { alignItems: 'center', gap: 8, backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, padding: 24 },
+    emptyText: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+
+    listingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 10, marginBottom: 8 },
+    thumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: Colors.cardAlt },
+    thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
+    price: { fontSize: 13, fontWeight: '800', color: Colors.accent, marginTop: 1 },
+
+    ratingCard: { backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, padding: 14, marginBottom: 8, gap: 4 },
+    ratingTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    ratingHandle: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.accent },
+    ratingComment: { fontSize: 13.5, color: Colors.text, lineHeight: 19, marginTop: 2 },
+
+    badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+    badgeCard: { width: '31.5%', backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', padding: 10, gap: 4 },
+    badgeIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+    badgeLabel: { fontSize: 11.5, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+    badgeHow: { fontSize: 10.5, color: Colors.textMuted, textAlign: 'center', lineHeight: 14 },
+
+    section: { paddingHorizontal: 16, marginTop: 20 },
+    sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 10 },
+    settingsCard: { backgroundColor: Colors.card, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 10 },
+    rowIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+    rowLabel: { fontSize: 14, fontWeight: '600', color: Colors.text },
+    rowSub: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
+    divider: { height: 1, backgroundColor: Colors.border, marginLeft: 62 },
+    logoutBtn: { marginTop: 12, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, backgroundColor: Colors.danger + '1F', borderWidth: 1, borderColor: Colors.danger + '55' },
+    logoutText: { color: Colors.danger, fontWeight: '800', fontSize: 14 },
+
+    stateWrap: { alignItems: 'center', marginTop: 60, paddingHorizontal: 24, gap: 6 },
+    stateTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginTop: 6 },
+    stateSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
+    stateBtn: { marginTop: 10, minHeight: 44, borderRadius: 22, backgroundColor: PRIMARY, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
+    stateBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+    linkRow: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+    modalCard: { backgroundColor: Colors.card, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, padding: 22, width: '86%' },
+    modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.text },
+    modalInput: { backgroundColor: Colors.bg, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, color: Colors.text, fontSize: 15, marginBottom: 16 },
+    modalCancel: { flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+    modalSave: { flex: 1, minHeight: 48, borderRadius: 12, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' },
+  });

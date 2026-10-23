@@ -81,7 +81,7 @@ export const LoginScreen = () => {
     if (!email.includes('@')) { Alert.alert('Invalid email', 'Please enter a valid college email.'); return; }
     setLoading(true);
     try {
-      const response = await fetch('https://campus-backend-production-2dbb.up.railway.app/api/auth/login', {
+      const response = await fetch('https://campus-backend-arfy.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
