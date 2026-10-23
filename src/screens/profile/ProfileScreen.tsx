@@ -341,6 +341,11 @@ export const ProfileScreen = () => {
           </View>
         </View>
 
+        {/* Student verification */}
+        <View style={{ marginHorizontal: 16, marginTop: 6 }}>
+          <VerificationRow />
+        </View>
+
         {/* Trust score */}
         <View style={styles.card}>
           <View style={styles.trustRow}>
@@ -593,7 +598,7 @@ const makeStyles = (Colors: any) =>
     chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
     chipText: { fontSize: 11, fontWeight: '700' },
 
-    card: { marginHorizontal: 16, marginTop: 6, backgroundColor: Colors.card, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, padding: 16 },
+    card: { marginHorizontal: 16, marginTop: 12, backgroundColor: Colors.card, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, padding: 16 },
     trustRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
     ring: { width: 84, height: 84, borderRadius: 42, borderWidth: 5, alignItems: 'center', justifyContent: 'center' },
     ringScore: { fontSize: 26, fontWeight: '900' },
