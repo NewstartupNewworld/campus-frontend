@@ -135,7 +135,7 @@ const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
 
   const cs = StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end' },
-    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },
+    backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)' },
     sheet: {
       backgroundColor: withAlpha(Colors.card, 'EB'), borderTopLeftRadius: 22, borderTopRightRadius: 22,
       paddingHorizontal: 12, paddingBottom: 12 + (pad > 0 ? 0 : insets.bottom), maxHeight: '80%', ...cardShadow,
@@ -344,7 +344,7 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
 
   const cps = StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end' },
-    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+    backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
     sheet: { backgroundColor: Colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, paddingBottom: 16 + (pad > 0 ? 0 : insets.bottom), maxHeight: '92%', ...cardShadow },
     handle: { width: 36, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
     title: { fontWeight: '800', fontSize: 18, color: Colors.text, marginBottom: 4 },

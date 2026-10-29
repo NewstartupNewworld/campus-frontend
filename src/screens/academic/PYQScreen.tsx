@@ -70,7 +70,7 @@ export default function PYQScreen({ navigation }: any) {
 
         {/* Subject chips */}
         <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>SUBJECT</Text>
-        <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {SUBJECTS.map(s => (
               <TouchableOpacity key={s} onPress={() => setSubject(s)}

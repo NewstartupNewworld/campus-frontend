@@ -171,7 +171,7 @@ export const CreateListingScreen = () => {
 
         {/* Photos */}
         <Text style={styles.label}>📸 Photos</Text>
-        <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} style={styles.imagesRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[{ flexGrow: 0 }, styles.imagesRow]}>
           {images.map((uri, i) => (
             <View key={i} style={styles.imageWrap}>
               <Image source={{ uri }} style={styles.imageThumb} />
