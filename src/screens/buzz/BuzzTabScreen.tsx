@@ -8,13 +8,14 @@ import { GroupsScreen } from './GroupsScreen';
 
 type InPage = 'feed' | 'groups';
 
-// Feed and Groups open inside this screen. Events, Clubs and Confessions open their own full screens
+// Feed and Groups open inside this screen. Events, Clubs, Confessions and People open their own full screens
 // (the tab bar keeps highlighting Buzz, and the Android back button returns here).
 const CHIPS: { key: string; label: string; route?: string; purple?: boolean }[] = [
   { key: 'feed', label: 'Feed' },
   { key: 'groups', label: 'Groups' },
   { key: 'events', label: 'Events', route: 'Events' },
   { key: 'clubs', label: 'Clubs', route: 'Clubs' },
+  { key: 'people', label: 'People', route: 'UserSearch' },
   { key: 'confessions', label: 'Confessions', route: 'Confessions', purple: true },
 ];
 

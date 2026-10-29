@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, ActivityIndicator,
-  KeyboardAvoidingView, Platform, ScrollView, Alert,
-  ImageBackground,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
+  ScrollView, Alert, ImageBackground,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColors } from '../../theme/ThemeProvider';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColors } from '../../theme/ThemeProvider';
+import PasswordInput from '../../components/PasswordInput';
+import { useKeyboardPadding } from '../../utils/useKeyboardPadding';
 
 type AuthStackParamList = {
   Login: undefined; Signup: undefined; Main: undefined;
 };
 type VerifyMethod = 'email' | 'studentId' | 'digitalId';
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const COLLEGE_IMAGES: Record<string, string> = {
   'iit': 'https://images.unsplash.com/photo-1562774053-701939374585?w=800&q=80',
@@ -45,8 +48,27 @@ const cardShadow = {
   shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
 };
 
+// Kept outside SignupScreen on purpose: a component defined inside would be rebuilt on every
+// keystroke and close the keyboard.
+const Field = ({ icon, children }: { icon: IconName; children: React.ReactNode }) => {
+  const Colors = useColors();
+  return (
+    <View
+      style={{
+        flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg,
+        borderRadius: 13, paddingHorizontal: 12, marginBottom: 12, ...softShadow,
+      }}
+    >
+      <Ionicons name={icon} size={17} color={Colors.textMuted} style={{ marginRight: 8 }} />
+      {children}
+    </View>
+  );
+};
+
 export const SignupScreen = () => {
   const Colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { rootRef, onLayout, pad } = useKeyboardPadding();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -71,26 +93,22 @@ export const SignupScreen = () => {
     container: { flex: 1, backgroundColor: Colors.bg },
     scroll: { flexGrow: 1, padding: 20, paddingBottom: 40 },
 
-    // Header
     header: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
-    backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', ...softShadow },
-    backText: { color: Colors.text, fontSize: 18 },
+    backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', ...softShadow },
     headerTitle: { fontSize: 19, fontWeight: '800', color: Colors.text },
     headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
 
-    // Progress bar
     progressBg: { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 22 },
     progressFill: { height: '100%', backgroundColor: Colors.accent, borderRadius: 2 },
 
-    // Card — shadow, no border
     card: { backgroundColor: Colors.card, borderRadius: 20, padding: 20, marginBottom: 16, ...cardShadow },
-    stepTitle: { fontSize: 19, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+    stepTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    stepTitle: { fontSize: 19, fontWeight: '800', color: Colors.text },
     stepSub: { fontSize: 12.5, color: Colors.textMuted, marginBottom: 18, lineHeight: 19 },
 
-    // Verify method cards — shadow, active = accent tint
     methodCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bg, borderRadius: 14, padding: 13, marginBottom: 9 },
     methodCardActive: { backgroundColor: Colors.accent + '12' },
-    methodIcon: { fontSize: 22 },
+    methodIconWrap: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.card },
     methodText: { flex: 1 },
     methodTitle: { fontWeight: '700', fontSize: 13.5, color: Colors.text },
     methodSub: { fontSize: 11.5, color: Colors.textMuted, marginTop: 2 },
@@ -98,41 +116,42 @@ export const SignupScreen = () => {
     methodRadioActive: { borderColor: Colors.accent },
     methodRadioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.accent },
 
+    idNote: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: Colors.accent + '12', borderRadius: 12, padding: 12, marginTop: 4 },
+    idNoteText: { flex: 1, fontSize: 12, color: Colors.textMuted, lineHeight: 17 },
+
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginVertical: 14 },
     label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 7, marginTop: 4 },
 
-    // Inputs — bg fill, shadow, no border
-    inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 13, paddingHorizontal: 12, marginBottom: 12, ...softShadow },
-    inputIcon: { fontSize: 15, marginRight: 8 },
     input: { flex: 1, color: Colors.text, fontSize: 13.5, paddingVertical: 12 },
 
-    // College image preview
     collegePreview: { width: '100%', height: 130, borderRadius: 14, overflow: 'hidden', marginBottom: 14 },
     collegePreviewImage: { borderRadius: 14 },
     collegePreviewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end', padding: 14, borderRadius: 14 },
     collegePreviewText: { fontSize: 17, fontWeight: '900', color: '#fff' },
     collegePreviewSub: { fontSize: 11.5, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
 
-    // Anon info card — accent tint, shadow
     anonCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: Colors.accent + '12', borderRadius: 14, padding: 14, marginBottom: 18, ...softShadow },
     anonTitle: { fontWeight: '700', fontSize: 13, color: Colors.text, marginBottom: 3 },
     anonSub: { fontSize: 11.5, color: Colors.textMuted, lineHeight: 17 },
 
-    // CTA button — gradient
     nextBtn: { borderRadius: 14, overflow: 'hidden', ...softShadow },
-    nextBtnGradient: { paddingVertical: 15, alignItems: 'center' },
+    nextBtnGradient: { paddingVertical: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
     nextBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
-    loginLink: { alignItems: 'center', marginTop: 10 },
+    loginLink: { alignItems: 'center', marginTop: 10, minHeight: 40, justifyContent: 'center' },
     loginLinkText: { color: Colors.textMuted, fontSize: 13 },
   });
 
-  const MethodCard = ({ method, icon, title, sub }: { method: VerifyMethod; icon: string; title: string; sub: string }) => (
+  const MethodCard = ({ method, icon, title, sub }: { method: VerifyMethod; icon: IconName; title: string; sub: string }) => (
     <TouchableOpacity
       style={[styles.methodCard, verifyMethod === method && styles.methodCardActive]}
       onPress={() => setVerifyMethod(method)}
+      accessibilityRole="button"
+      accessibilityLabel={title}
     >
-      <Text style={styles.methodIcon}>{icon}</Text>
+      <View style={styles.methodIconWrap}>
+        <Ionicons name={icon} size={20} color={verifyMethod === method ? Colors.accent : Colors.textMuted} />
+      </View>
       <View style={styles.methodText}>
         <Text style={[styles.methodTitle, verifyMethod === method && { color: Colors.accent }]}>{title}</Text>
         <Text style={styles.methodSub}>{sub}</Text>
@@ -165,7 +184,20 @@ export const SignupScreen = () => {
       const response = await fetch('https://campus-backend-arfy.onrender.com/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verifyMethod, email: email || null, studentId: studentId || null, studentName: studentName || null, phoneNumber: phoneNumber || null, password, college, department, year, course: course || null, hostel: hostel || null, interests: interests || null }),
+        body: JSON.stringify({
+          verifyMethod,
+          email: email.trim() || null,
+          studentId: studentId.trim() || null,
+          studentName: studentName.trim() || null,
+          phoneNumber: phoneNumber.trim() || null,
+          password,
+          college: college.trim(),
+          department: department.trim(),
+          year: year.trim(),
+          course: course.trim() || null,
+          hostel: hostel.trim() || null,
+          interests: interests.trim() || null,
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Signup failed');
@@ -173,18 +205,37 @@ export const SignupScreen = () => {
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
       navigation.navigate('Main' as never);
     } catch (err: any) {
-      Alert.alert('Signup failed', err.message || 'Something went wrong. Try again.');
+      const msg = err.message || '';
+      if (msg.includes('Network')) {
+        Alert.alert('Could not reach the server', 'The server may be waking up. Please try again in a minute.');
+      } else {
+        Alert.alert('Signup failed', msg || 'Something went wrong. Try again.');
+      }
     } finally { setLoading(false); }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <View
+      ref={rootRef}
+      collapsable={false}
+      onLayout={onLayout}
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
+      <View style={{ flex: 1, paddingBottom: pad }}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
 
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => step === 1 ? navigation.goBack() : setStep(1)}>
-              <Text style={styles.backText}>←</Text>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => (step === 1 ? navigation.goBack() : setStep(1))}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
+              <Ionicons name="chevron-back" size={22} color={Colors.text} />
             </TouchableOpacity>
             <View>
               <Text style={styles.headerTitle}>Create Account</Text>
@@ -199,56 +250,59 @@ export const SignupScreen = () => {
           {step === 1 && (
             <View style={styles.card}>
               <Text style={styles.stepTitle}>Verify you're a student</Text>
-              <Text style={styles.stepSub}>Choose how you want to verify your college identity</Text>
-              <MethodCard method="email" icon="✉️" title="College Email" sub="Use your .ac.in or institute email" />
-              <MethodCard method="studentId" icon="🪪" title="Student ID Number" sub="Enter your enrollment / roll number" />
-              <MethodCard method="digitalId" icon="📱" title="Digital ID Card" sub="Upload a photo of your college ID" />
+              <Text style={[styles.stepSub, { marginTop: 4 }]}>Choose how you want to sign up</Text>
+              <MethodCard method="email" icon="mail-outline" title="College Email" sub="Use your .ac.in or institute email" />
+              <MethodCard method="studentId" icon="card-outline" title="Student ID Number" sub="Enter your enrollment / roll number" />
+              <MethodCard method="digitalId" icon="phone-portrait-outline" title="Digital ID Card" sub="You will upload the ID photo after signing up" />
+
+              <View style={styles.idNote}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={Colors.accent} />
+                <Text style={styles.idNoteText}>
+                  After signing up, upload a photo of your college ID in Profile, Student verification.
+                  You get the Verified badge once it is approved.
+                </Text>
+              </View>
               <View style={styles.divider} />
 
               {verifyMethod === 'email' && (
                 <>
                   <Text style={styles.label}>College Email</Text>
-                  <View style={styles.inputWrap}>
-                    <Text style={styles.inputIcon}>✉️</Text>
-                    <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@college.ac.in" placeholderTextColor={Colors.textDim} keyboardType="email-address" autoCapitalize="none" />
-                  </View>
+                  <Field icon="mail-outline">
+                    <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@college.ac.in" placeholderTextColor={Colors.textDim} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                  </Field>
                 </>
               )}
 
               {verifyMethod === 'studentId' && (
                 <>
                   <Text style={styles.label}>Full Name</Text>
-                  <View style={styles.inputWrap}>
-                    <Text style={styles.inputIcon}>👤</Text>
+                  <Field icon="person-outline">
                     <TextInput style={styles.input} value={studentName} onChangeText={setStudentName} placeholder="As on your ID card" placeholderTextColor={Colors.textDim} />
-                  </View>
+                  </Field>
                   <Text style={styles.label}>Student / Roll Number</Text>
-                  <View style={styles.inputWrap}>
-                    <Text style={styles.inputIcon}>🪪</Text>
-                    <TextInput style={styles.input} value={studentId} onChangeText={setStudentId} placeholder="e.g. 21CS10045" placeholderTextColor={Colors.textDim} />
-                  </View>
+                  <Field icon="card-outline">
+                    <TextInput style={styles.input} value={studentId} onChangeText={setStudentId} placeholder="e.g. 21CS10045" placeholderTextColor={Colors.textDim} autoCapitalize="characters" />
+                  </Field>
                   <Text style={styles.label}>Phone Number</Text>
-                  <View style={styles.inputWrap}>
-                    <Text style={styles.inputIcon}>📱</Text>
+                  <Field icon="call-outline">
                     <TextInput style={styles.input} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="10-digit mobile number" placeholderTextColor={Colors.textDim} keyboardType="phone-pad" maxLength={10} />
-                  </View>
+                  </Field>
                 </>
               )}
 
               <Text style={styles.label}>Create Password</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>🔒</Text>
-                <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Min 8 characters" placeholderTextColor={Colors.textDim} secureTextEntry />
-              </View>
+              <Field icon="lock-closed-outline">
+                <PasswordInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Min 8 characters" placeholderTextColor={Colors.textDim} />
+              </Field>
               <Text style={styles.label}>Confirm Password</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>🔒</Text>
-                <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repeat your password" placeholderTextColor={Colors.textDim} secureTextEntry />
-              </View>
+              <Field icon="lock-closed-outline">
+                <PasswordInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repeat your password" placeholderTextColor={Colors.textDim} />
+              </Field>
 
-              <TouchableOpacity style={styles.nextBtn} onPress={handleStep1} activeOpacity={0.85}>
+              <TouchableOpacity style={styles.nextBtn} onPress={handleStep1} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Continue">
                 <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.nextBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  <Text style={styles.nextBtnText}>Continue →</Text>
+                  <Text style={styles.nextBtnText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -256,74 +310,71 @@ export const SignupScreen = () => {
 
           {step === 2 && (
             <View style={styles.card}>
-              <Text style={styles.stepTitle}>🏫 Your College</Text>
+              <View style={styles.stepTitleRow}>
+                <Ionicons name="business-outline" size={20} color={Colors.text} />
+                <Text style={styles.stepTitle}>Your College</Text>
+              </View>
               <Text style={styles.stepSub}>Tell us about yourself so we can connect you with the right people.</Text>
 
               <Text style={styles.label}>College Name *</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>🏛️</Text>
+              <Field icon="business-outline">
                 <TextInput style={styles.input} value={college} onChangeText={setCollege} placeholder="e.g. IIT Kharagpur" placeholderTextColor={Colors.textDim} />
-              </View>
+              </Field>
 
               {collegeImage ? (
                 <ImageBackground source={{ uri: collegeImage }} style={styles.collegePreview} imageStyle={styles.collegePreviewImage}>
                   <View style={styles.collegePreviewOverlay}>
                     <Text style={styles.collegePreviewText}>{college}</Text>
-                    <Text style={styles.collegePreviewSub}>Your campus community awaits 🎓</Text>
+                    <Text style={styles.collegePreviewSub}>Your campus community awaits</Text>
                   </View>
                 </ImageBackground>
               ) : null}
 
               <Text style={styles.label}>Department *</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>📚</Text>
+              <Field icon="library-outline">
                 <TextInput style={styles.input} value={department} onChangeText={setDepartment} placeholder="e.g. Computer Science, Mechanical..." placeholderTextColor={Colors.textDim} />
-              </View>
+              </Field>
               <Text style={styles.label}>Year / Semester *</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>📅</Text>
+              <Field icon="calendar-outline">
                 <TextInput style={styles.input} value={year} onChangeText={setYear} placeholder="e.g. 2nd Year, Semester 3..." placeholderTextColor={Colors.textDim} />
-              </View>
+              </Field>
               <Text style={styles.label}>Course / Program</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>🎓</Text>
+              <Field icon="school-outline">
                 <TextInput style={styles.input} value={course} onChangeText={setCourse} placeholder="e.g. B.Tech, MBA, BSc..." placeholderTextColor={Colors.textDim} />
-              </View>
+              </Field>
               <Text style={styles.label}>Hostel / Area</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>🏠</Text>
+              <Field icon="home-outline">
                 <TextInput style={styles.input} value={hostel} onChangeText={setHostel} placeholder="e.g. Hostel A, PG near campus..." placeholderTextColor={Colors.textDim} />
-              </View>
+              </Field>
               <Text style={styles.label}>Interests (optional)</Text>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>⚡</Text>
+              <Field icon="flash-outline">
                 <TextInput style={styles.input} value={interests} onChangeText={setInterests} placeholder="e.g. Coding, Music, Sports..." placeholderTextColor={Colors.textDim} />
-              </View>
+              </Field>
 
               <View style={styles.anonCard}>
-                <Text style={{ fontSize: 22 }}>🎭</Text>
+                <Ionicons name="eye-off-outline" size={22} color={Colors.accent} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.anonTitle}>You'll appear as CampusOwl#42</Text>
-                  <Text style={styles.anonSub}>Random anonymous handle. Your real name is never shown publicly.</Text>
+                  <Text style={styles.anonTitle}>You get a random anonymous handle</Text>
+                  <Text style={styles.anonSub}>It is shown to you right after sign up. Your real name is never shown publicly.</Text>
                 </View>
               </View>
 
-              <TouchableOpacity style={[styles.nextBtn, loading && { opacity: 0.7 }]} onPress={handleSignup} disabled={loading} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.nextBtn, loading && { opacity: 0.7 }]} onPress={handleSignup} disabled={loading} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Create account">
                 <LinearGradient colors={[Colors.accent, Colors.accentAlt]} style={styles.nextBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>🚀 Create Account</Text>}
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>Create Account</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
 
-          <TouchableOpacity style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity style={styles.loginLink} onPress={() => navigation.navigate('Login')} accessibilityRole="button">
             <Text style={styles.loginLinkText}>
               Already have an account? <Text style={{ color: Colors.accent }}>Sign In</Text>
             </Text>
           </TouchableOpacity>
 
         </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 };

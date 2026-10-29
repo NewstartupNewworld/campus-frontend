@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../theme/ThemeProvider';
 import FloatingSOS from '../components/FloatingSOS';
+import { useTabBadges } from '../utils/useTabBadges';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import * as CampusChatModule from '../screens/home/CampusChatScreen';
 import { MarketplaceScreen } from '../screens/marketplace/MarketplaceScreen';
@@ -21,6 +22,8 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { CollegeAccessScreen } from '../screens/profile/CollegeAccessScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
 import VerificationScreen from '../screens/profile/VerificationScreen';
+import UserSearchScreen from '../screens/social/UserSearchScreen';
+import PublicProfileScreen from '../screens/social/PublicProfileScreen';
 
 // Academic screens
 import AcademicScreen from '../screens/academic/AcademicScreen';
@@ -134,6 +137,8 @@ function BuzzStackScreen() {
       <BuzzStack.Screen name="ClubDetail" component={ClubDetailScreen} />
       <BuzzStack.Screen name="CreateClub" component={CreateClubScreen} />
       <BuzzStack.Screen name="CreateConfession" component={CreateConfessionScreen} />
+      <BuzzStack.Screen name="UserSearch" component={UserSearchScreen} />
+      <BuzzStack.Screen name="PublicProfile" component={PublicProfileScreen} />
     </BuzzStack.Navigator>
   );
 }
@@ -269,6 +274,9 @@ function CustomTabBar({
   const activeKey = ACTIVE_TAB_FOR[current] ?? '';
   const bottomPad = Math.max(insets.bottom, 8);
 
+  // Unread notification count per tab (refreshes when you move between screens)
+  const badges = useTabBadges(`${current}:${deep}`);
+
   useEffect(() => {
     onRouteChange(current, deep);
   }, [current, deep]);
@@ -290,6 +298,7 @@ function CustomTabBar({
       {VISIBLE_TABS.map((tab) => {
         const focused = activeKey === tab.name;
         const route = state.routes.find((r) => r.name === tab.name);
+        const count = badges[tab.name] ?? 0;
 
         const onPress = () => {
           if (!route) return;
@@ -310,7 +319,7 @@ function CustomTabBar({
             onPress={onPress}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={tab.label}
+            accessibilityLabel={count > 0 ? `${tab.label}, ${count} new` : tab.label}
           >
             <View
               style={{
@@ -327,6 +336,28 @@ function CustomTabBar({
                 size={22}
                 color={focused ? Colors.accent : Colors.textMuted}
               />
+              {count > 0 ? (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: 6,
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    paddingHorizontal: 4,
+                    backgroundColor: '#EF4444',
+                    borderWidth: 2,
+                    borderColor: Colors.card,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>
+                    {count > 9 ? '9+' : count}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Text
               style={{

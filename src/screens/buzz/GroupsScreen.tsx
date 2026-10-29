@@ -5,7 +5,9 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
+import { useKeyboardPadding } from '../../utils/useKeyboardPadding';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
 
@@ -14,6 +16,7 @@ interface Group {
   icon: string; member_count: string; is_member: boolean;
 }
 
+// These are emojis the group creator picks as the group's picture, so they stay as text
 const GROUP_ICONS = ['👥', '📚', '🎮', '⚽', '🎵', '🎨', '💻', '🍔', '🎬', '✈️', '📷', '🏆'];
 
 const softShadow = {
@@ -34,10 +37,11 @@ const GroupCard = ({ group, onJoin, onOpen }: { group: Group; onJoin: (id: strin
     info: { flex: 1 },
     name: { fontWeight: '700', fontSize: 13.5, color: Colors.text },
     desc: { fontSize: 11.5, color: Colors.textMuted, marginTop: 2 },
-    members: { fontSize: 10.5, color: Colors.textDim, marginTop: 3 },
-    joinBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 7, ...softShadow },
+    membersRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+    members: { fontSize: 10.5, color: Colors.textDim },
+    joinBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 3, ...softShadow },
     joinText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-    joinedBadge: { backgroundColor: Colors.success + '20', borderRadius: 12, paddingHorizontal: 11, paddingVertical: 7 },
+    joinedBadge: { backgroundColor: Colors.success + '20', borderRadius: 12, paddingHorizontal: 11, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 3 },
     joinedText: { color: Colors.success, fontWeight: '700', fontSize: 12 },
   });
   return (
@@ -48,13 +52,20 @@ const GroupCard = ({ group, onJoin, onOpen }: { group: Group; onJoin: (id: strin
       <View style={gc.info}>
         <Text style={gc.name}>{group.name}</Text>
         <Text style={gc.desc} numberOfLines={1}>{group.description || 'No description'}</Text>
-        <Text style={gc.members}>👤 {group.member_count} members</Text>
+        <View style={gc.membersRow}>
+          <Ionicons name="person-outline" size={11} color={Colors.textDim} />
+          <Text style={gc.members}>{group.member_count} members</Text>
+        </View>
       </View>
       {group.is_member ? (
-        <View style={gc.joinedBadge}><Text style={gc.joinedText}>✓ Joined</Text></View>
+        <View style={gc.joinedBadge}>
+          <Ionicons name="checkmark" size={13} color={Colors.success} />
+          <Text style={gc.joinedText}>Joined</Text>
+        </View>
       ) : (
-        <TouchableOpacity style={gc.joinBtn} onPress={() => onJoin(group.id)} activeOpacity={0.8}>
-          <Text style={gc.joinText}>+ Join</Text>
+        <TouchableOpacity style={gc.joinBtn} onPress={() => onJoin(group.id)} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel={`Join ${group.name}`}>
+          <Ionicons name="add" size={14} color="#fff" />
+          <Text style={gc.joinText}>Join</Text>
         </TouchableOpacity>
       )}
     </TouchableOpacity>
@@ -63,6 +74,7 @@ const GroupCard = ({ group, onJoin, onOpen }: { group: Group; onJoin: (id: strin
 
 const CreateGroupModal = ({ visible, onClose, onCreate }: { visible: boolean; onClose: () => void; onCreate: (name: string, description: string, icon: string) => void }) => {
   const Colors = useColors();
+  const { rootRef, onLayout, pad } = useKeyboardPadding();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('👥');
@@ -94,8 +106,8 @@ const CreateGroupModal = ({ visible, onClose, onCreate }: { visible: boolean; on
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={cm.overlay}>
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
+      <View ref={rootRef} collapsable={false} onLayout={onLayout} style={[cm.overlay, { paddingBottom: pad }]}>
         <View style={cm.sheet}>
           <View style={cm.handle} />
           <Text style={cm.title}>Create a Group</Text>
@@ -135,9 +147,10 @@ export const GroupsScreen = () => {
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     headerTitle: { fontSize: 20, fontWeight: '900', color: Colors.text },
     headerSub: { fontSize: 11.5, color: Colors.textMuted, marginTop: 1 },
-    createBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, ...softShadow },
+    createBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 4, ...softShadow },
     createBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginBottom: 6 },
     list: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 20 },
@@ -184,11 +197,15 @@ export const GroupsScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>👥 Groups</Text>
+          <View style={styles.titleRow}>
+            <Ionicons name="people" size={20} color={Colors.accent} />
+            <Text style={styles.headerTitle}>Groups</Text>
+          </View>
           <Text style={styles.headerSub}>Connect with your campus community</Text>
         </View>
-        <TouchableOpacity style={styles.createBtn} onPress={() => setCreateVisible(true)}>
-          <Text style={styles.createBtnText}>+ Create</Text>
+        <TouchableOpacity style={styles.createBtn} onPress={() => setCreateVisible(true)} accessibilityRole="button" accessibilityLabel="Create a group">
+          <Ionicons name="add" size={16} color="#fff" />
+          <Text style={styles.createBtnText}>Create</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.divider} />
@@ -201,7 +218,7 @@ export const GroupsScreen = () => {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => <GroupCard group={item} onJoin={handleJoin} onOpen={handleOpen} />}
-          ListEmptyComponent={<Text style={styles.empty}>No groups yet. Create the first one! 🎉</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>No groups yet. Create the first one!</Text>}
         />
       )}
       <CreateGroupModal visible={createVisible} onClose={() => setCreateVisible(false)} onCreate={handleCreate} />

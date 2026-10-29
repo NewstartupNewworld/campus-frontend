@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import VerificationRow from './VerificationRow';
+import EditProfileRow from './EditProfileRow';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -344,6 +345,11 @@ export const ProfileScreen = () => {
         {/* Student verification */}
         <View style={{ marginHorizontal: 16, marginTop: 6 }}>
           <VerificationRow />
+        </View>
+
+        {/* Edit profile (college stays locked) */}
+        <View style={{ marginHorizontal: 16, marginTop: 10 }}>
+          <EditProfileRow onSaved={load} />
         </View>
 
         {/* Trust score */}

@@ -172,7 +172,7 @@ export default function EventsScreen({ navigation }: any) {
       </View>
 
       {/* Type chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+      <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
         {EVENT_TYPES.map(t => {
           const config = TYPE_CONFIG[t];

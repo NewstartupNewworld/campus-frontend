@@ -117,7 +117,7 @@ export default function ConfessionsScreen({ navigation }: any) {
       </View>
 
       {/* Category chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+      <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
         {CATEGORIES.map(c => {
           const config = CAT_CONFIG[c];
