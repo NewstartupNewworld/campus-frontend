@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../theme/ThemeProvider';
 import FloatingSOS from '../components/FloatingSOS';
 import { useTabBadges } from '../utils/useTabBadges';
+import { KeyboardPadProvider } from '../utils/useKeyboardPadding';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import * as CampusChatModule from '../screens/home/CampusChatScreen';
 import { MarketplaceScreen } from '../screens/marketplace/MarketplaceScreen';
@@ -321,16 +322,20 @@ function CustomTabBar({
             accessibilityRole="button"
             accessibilityLabel={count > 0 ? `${tab.label}, ${count} new` : tab.label}
           >
-            <View
-              style={{
-                width: 56,
-                height: 30,
-                borderRadius: 15,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: focused ? Colors.accent + '2E' : 'transparent',
-              }}
-            >
+            <View style={{ width: 56, height: 30, alignItems: 'center', justifyContent: 'center' }}>
+              {/* The selected pill is its own layer, so it is round on every screen */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  borderRadius: 15,
+                  overflow: 'hidden',
+                  backgroundColor: focused ? Colors.accent + '33' : 'transparent',
+                }}
+              />
               <Ionicons
                 name={focused ? tab.icon : tab.iconOff}
                 size={22}
@@ -385,7 +390,7 @@ export function TabNavigator() {
   const tabBarTotal = TAB_BAR_HEIGHT + Math.max(insets.bottom, 8);
 
   return (
-    <View style={{ flex: 1 }}>
+    <KeyboardPadProvider>
       <Tab.Navigator
         initialRouteName="Home"
         backBehavior="history"
@@ -417,6 +422,6 @@ export function TabNavigator() {
         enabled={!keyboardVisible && focus.tab !== 'SOS'}
         chatContext={CHAT_SCREENS.includes(focus.deep)}
       />
-    </View>
+    </KeyboardPadProvider>
   );
 }
