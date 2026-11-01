@@ -130,7 +130,7 @@ const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
 }) => {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
-  const { rootRef, onLayout, pad } = useKeyboardPadding();
+  const { rootRef, onLayout, pad } = useKeyboardPadding({ modal: true });
   const [text, setText] = useState('');
 
   const cs = StyleSheet.create({
@@ -336,7 +336,7 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
 }) => {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
-  const { rootRef, onLayout, pad } = useKeyboardPadding();
+  const { rootRef, onLayout, pad } = useKeyboardPadding({ modal: true });
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<PostCategory>('Meme');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);

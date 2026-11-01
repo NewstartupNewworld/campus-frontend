@@ -74,7 +74,7 @@ const GroupCard = ({ group, onJoin, onOpen }: { group: Group; onJoin: (id: strin
 
 const CreateGroupModal = ({ visible, onClose, onCreate }: { visible: boolean; onClose: () => void; onCreate: (name: string, description: string, icon: string) => void }) => {
   const Colors = useColors();
-  const { rootRef, onLayout, pad } = useKeyboardPadding();
+  const { rootRef, onLayout, pad } = useKeyboardPadding({ modal: true });
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('👥');

@@ -28,7 +28,7 @@ const FIELDS: { key: keyof Form; label: string; placeholder: string; max: number
  */
 export default function EditProfileRow({ onSaved }: { onSaved?: () => void }) {
   const colors = useColors();
-  const { rootRef, onLayout, pad } = useKeyboardPadding();
+  const { rootRef, onLayout, pad } = useKeyboardPadding({ modal: true });
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'edit' | 'delete'>('edit');
   const [college, setCollege] = useState('');
