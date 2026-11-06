@@ -112,7 +112,7 @@ export default function ClubsScreen({ navigation }: any) {
               style={{ backgroundColor: colors.card, borderRadius: 12, padding: 12, color: colors.text, fontSize: 14, borderWidth: 0.5, borderColor: colors.border }}
             />
           </View>
-          <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}
+          <ScrollView horizontal style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
             {CATEGORIES.map(c => (
               <TouchableOpacity key={c} onPress={() => setCategory(c)}

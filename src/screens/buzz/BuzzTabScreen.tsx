@@ -46,7 +46,7 @@ export const BuzzTabScreen = () => {
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg, paddingTop: insets.top },
-    chipsScroll: { flexGrow: 0, paddingTop: 10, paddingBottom: 10 },
+    chipsScroll: { flexGrow: 0, flexShrink: 0, paddingTop: 10, paddingBottom: 10 },
     chipsContent: { paddingHorizontal: 16, gap: 8 },
     chip: {
       height: 40, borderRadius: 20, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center',

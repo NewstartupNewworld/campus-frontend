@@ -92,6 +92,21 @@ export default function RoommateScreen({ navigation }: any) {
     return `${days}d ago`;
   };
 
+    const messageUser = async (userId: string, handle: string) => {
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BASE_URL}/api/dm/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId, topic: 'Roommate' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not open the chat');
+      navigation.navigate('DirectChat', { chatId: data.chatId, handle: data.other?.handle ?? handle });
+    } catch (e: any) {
+      Alert.alert('Could not message', e?.message ?? 'Please try again.');
+    }
+  };
   const hasBudget = (p: { budget_min?: number | null; budget_max?: number | null }) =>
     p.budget_min != null && p.budget_max != null;
 
@@ -257,11 +272,11 @@ export default function RoommateScreen({ navigation }: any) {
                 ) : null}
 
                 {/* Contact */}
-                {p.contact ? (
-                  <TouchableOpacity onPress={() => Linking.openURL(`tel:${p.contact}`)}
+                {p.user_id ? (
+                  <TouchableOpacity onPress={() => messageUser(p.user_id, p.anonymous_handle)}
                     style={{ backgroundColor: '#22C55E', borderRadius: 12, padding: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}>
-                    <Ionicons name="call" size={14} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Contact</Text>
+                    <Ionicons name="chatbubble-ellipses" size={14} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Message</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>

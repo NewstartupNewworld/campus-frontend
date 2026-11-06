@@ -333,7 +333,7 @@ export const EventsScreen = () => {
     headerSub: { fontSize: 11.5, color: Colors.textMuted, marginTop: 1 },
     createBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, ...softShadow },
     createBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
-    filterRow: { flexGrow: 0, marginBottom: 4 },
+    filterRow: { flexGrow: 0, flexShrink: 0, marginBottom: 4 },
     filterContent: { paddingHorizontal: 14, gap: 7 },
     pill: { backgroundColor: Colors.card, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 6 },
     pillActive: { backgroundColor: Colors.accent },

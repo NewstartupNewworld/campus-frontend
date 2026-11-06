@@ -1,3 +1,7 @@
+import DirectChatScreen from '../screens/chat/DirectChatScreen';
+import DirectChatsScreen from '../screens/chat/DirectChatsScreen';
+import PublicProfileScreen from '../screens/social/PublicProfileScreen';
+import FollowListScreen from '../screens/social/FollowListScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -100,12 +104,12 @@ export function RootNavigator() {
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isLoggedIn ? (
-          <Stack.Screen name="Main" component={TabNavigator} />
+          <Stack.Screen name="Main" component={TabNavigator} /><Stack.Screen name="DirectChat" component={DirectChatScreen} /><Stack.Screen name="DirectChats" component={DirectChatsScreen} /><Stack.Screen name="PublicProfile" component={PublicProfileScreen} /><Stack.Screen name="FollowList" component={FollowListScreen} />
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
-            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen name="Main" component={TabNavigator} /><Stack.Screen name="DirectChat" component={DirectChatScreen} /><Stack.Screen name="DirectChats" component={DirectChatsScreen} /><Stack.Screen name="PublicProfile" component={PublicProfileScreen} /><Stack.Screen name="FollowList" component={FollowListScreen} />
           </>
         )}
       </Stack.Navigator>

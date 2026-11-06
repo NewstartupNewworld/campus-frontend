@@ -52,7 +52,7 @@ export default function NotesScreen({ navigation }: any) {
       <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
         {label}
       </Text>
-      <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {options.map((opt: string) => (
             <TouchableOpacity

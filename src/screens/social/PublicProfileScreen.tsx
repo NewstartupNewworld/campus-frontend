@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StatusBar, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StatusBar, ScrollView, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +36,7 @@ export default function PublicProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [opening, setOpening] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -77,16 +78,42 @@ export default function PublicProfileScreen() {
     }
   };
 
+  const openChat = async () => {
+    if (!user || opening) return;
+    try {
+      setOpening(true);
+      const token = await AsyncStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/dm/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not open the chat');
+      navigation.navigate('DirectChat', { chatId: data.chatId, handle: data.other?.handle ?? user.anonymous_handle });
+    } catch (e: any) {
+      Alert.alert('Could not message', e?.message ?? 'Please try again.');
+    } finally {
+      setOpening(false);
+    }
+  };
+
   const joined = user?.created_at
     ? new Date(user.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     : '';
   const meta = user ? [user.department, yearLabel(user.year)].filter(Boolean).join('  |  ') : '';
 
-  const Stat = ({ value, label }: { value: number | string; label: string }) => (
-    <View style={{ flex: 1, alignItems: 'center', gap: 2, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, paddingVertical: 14 }}>
+  const Stat = ({ value, label, onPress }: { value: number | string; label: string; onPress?: () => void }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={0.75}
+      accessibilityRole={onPress ? 'button' : undefined}
+      style={{ flex: 1, alignItems: 'center', gap: 2, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, paddingVertical: 14 }}
+    >
       <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{value}</Text>
       <Text style={{ color: colors.textMuted, fontSize: 11.5 }}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -143,8 +170,8 @@ export default function PublicProfileScreen() {
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Stat value={user.followers_count} label="Followers" />
-            <Stat value={user.following_count} label="Following" />
+            <Stat value={user.followers_count} label="Followers" onPress={() => navigation.navigate('FollowList', { userId: user.id, kind: 'followers' })} />
+            <Stat value={user.following_count} label="Following" onPress={() => navigation.navigate('FollowList', { userId: user.id, kind: 'following' })} />
             <Stat value={user.trust_score ?? 0} label="Trust" />
           </View>
 
@@ -153,29 +180,50 @@ export default function PublicProfileScreen() {
               <Text style={{ color: colors.textMuted, fontSize: 13 }}>This is your profile</Text>
             </View>
           ) : (
-            <TouchableOpacity
-              onPress={toggleFollow}
-              disabled={busy}
-              style={{
-                minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
-                backgroundColor: user.is_following ? colors.card : colors.accent,
-                borderWidth: 1, borderColor: user.is_following ? colors.border : colors.accent,
-                opacity: busy ? 0.7 : 1,
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={user.is_following ? 'Unfollow' : 'Follow'}
-            >
-              {busy ? (
-                <ActivityIndicator color={user.is_following ? colors.text : '#fff'} />
-              ) : (
-                <>
-                  <Ionicons name={user.is_following ? 'checkmark' : 'person-add'} size={17} color={user.is_following ? colors.text : '#fff'} />
-                  <Text style={{ color: user.is_following ? colors.text : '#fff', fontWeight: '800', fontSize: 14.5 }}>
-                    {user.is_following ? 'Following' : 'Follow'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={toggleFollow}
+                disabled={busy}
+                style={{
+                  flex: 1, minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
+                  backgroundColor: user.is_following ? colors.card : colors.accent,
+                  borderWidth: 1, borderColor: user.is_following ? colors.border : colors.accent,
+                  opacity: busy ? 0.7 : 1,
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={user.is_following ? 'Unfollow' : 'Follow'}
+              >
+                {busy ? (
+                  <ActivityIndicator color={user.is_following ? colors.text : '#fff'} />
+                ) : (
+                  <>
+                    <Ionicons name={user.is_following ? 'checkmark' : 'person-add'} size={17} color={user.is_following ? colors.text : '#fff'} />
+                    <Text style={{ color: user.is_following ? colors.text : '#fff', fontWeight: '800', fontSize: 14.5 }}>
+                      {user.is_following ? 'Following' : 'Follow'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={openChat}
+                disabled={opening}
+                style={{
+                  flex: 1, minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
+                  backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, opacity: opening ? 0.7 : 1,
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Message"
+              >
+                {opening ? (
+                  <ActivityIndicator color={colors.text} />
+                ) : (
+                  <>
+                    <Ionicons name="chatbubble-ellipses-outline" size={17} color={colors.text} />
+                    <Text style={{ color: colors.text, fontWeight: '800', fontSize: 14.5 }}>Message</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           )}
         </ScrollView>
       )}

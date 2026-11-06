@@ -94,7 +94,7 @@ Keep it conversational and warm, like talking to a friend.`,
         </View>
 
         {/* Topic chips */}
-        <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}
+        <ScrollView horizontal style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 10 }}>
           {TOPICS.map(t => (
             <TouchableOpacity key={t} onPress={() => setTopic(t)}

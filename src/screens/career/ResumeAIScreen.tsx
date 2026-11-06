@@ -72,7 +72,7 @@ export default function ResumeAIScreen() {
 
         {/* Target role */}
         <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>TARGET ROLE</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 16 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {ROLES.map(r => (
               <TouchableOpacity key={r} onPress={() => setTargetRole(r)}

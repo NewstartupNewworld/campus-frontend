@@ -6,6 +6,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
+import EngageBar from '../../components/EngageBar';
+import { EngageSummary, fetchEngageSummary } from '../../utils/engage';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const CATEGORIES = ['All', 'Love', 'Academic', 'Hostel', 'Funny', 'Serious', 'General'];
@@ -22,17 +24,16 @@ const CAT_CONFIG: Record<string, { icon: IconName; color: string }> = {
 };
 
 type Confession = {
-  id: number;
+  id: string | number;
   content: string;
   category: string;
-  likes_count: number;
-  is_liked: boolean;
   created_at: string;
 };
 
 export default function ConfessionsScreen({ navigation }: any) {
   const colors = useColors();
   const [confessions, setConfessions] = useState<Confession[]>([]);
+  const [summary, setSummary] = useState<Record<string, EngageSummary>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [category, setCategory] = useState('All');
@@ -50,29 +51,16 @@ export default function ConfessionsScreen({ navigation }: any) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setConfessions(data.confessions ?? []);
+      const list: Confession[] = data.confessions ?? [];
+      setConfessions(list);
+      setSummary(await fetchEngageSummary('confession', list.map((c) => String(c.id))));
     } catch { } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const toggleLike = async (id: number) => {
-    try {
-      const token = await getToken();
-      const res = await fetch(`${BASE_URL}/api/confessions/${id}/like`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setConfessions(prev => prev.map(c => c.id === id ? {
-        ...c,
-        is_liked: data.liked,
-        likes_count: data.liked ? c.likes_count + 1 : c.likes_count - 1,
-      } : c));
-    } catch { }
-  };
-
-  const reportConfession = async (id: number) => {
+  const reportConfession = async (id: string | number) => {
     Alert.alert('Report?', 'Report this confession as inappropriate?', [
       { text: 'Cancel' },
       {
@@ -117,7 +105,8 @@ export default function ConfessionsScreen({ navigation }: any) {
       </View>
 
       {/* Category chips */}
-      <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0, flexShrink: 0 }}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
         {CATEGORIES.map(c => {
           const config = CAT_CONFIG[c];
@@ -158,8 +147,9 @@ export default function ConfessionsScreen({ navigation }: any) {
             </View>
           ) : confessions.map(confession => {
             const config = CAT_CONFIG[confession.category] ?? CAT_CONFIG['General'];
+            const key = String(confession.id);
             return (
-              <View key={confession.id} style={{ backgroundColor: colors.card, borderRadius: 18, padding: 16, borderWidth: 0.5, borderColor: colors.border }}>
+              <View key={key} style={{ backgroundColor: colors.card, borderRadius: 18, padding: 16, borderWidth: 0.5, borderColor: colors.border }}>
                 {/* Top */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -181,22 +171,14 @@ export default function ConfessionsScreen({ navigation }: any) {
                   {confession.content}
                 </Text>
 
-                {/* Actions */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <TouchableOpacity onPress={() => toggleLike(confession.id)}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: confession.is_liked ? '#EC489922' : colors.cardAlt, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 }}>
-                    <Ionicons name={confession.is_liked ? 'heart' : 'heart-outline'} size={16} color={confession.is_liked ? '#EC4899' : colors.textMuted} />
-                    <Text style={{ color: confession.is_liked ? '#EC4899' : colors.textMuted, fontSize: 13, fontWeight: '600' }}>
-                      {confession.likes_count}
-                    </Text>
-                  </TouchableOpacity>
+                {/* Reactions and comments */}
+                <EngageBar targetType="confession" targetId={key} summary={summary[key]} />
 
-                  <TouchableOpacity onPress={() => reportConfession(confession.id)}
-                    style={{ marginLeft: 'auto', padding: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Ionicons name="flag-outline" size={13} color={colors.textDim} />
-                    <Text style={{ color: colors.textDim, fontSize: 12 }}>Report</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity onPress={() => reportConfession(confession.id)}
+                  style={{ alignSelf: 'flex-end', marginTop: 10, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="flag-outline" size={13} color={colors.textDim} />
+                  <Text style={{ color: colors.textDim, fontSize: 12 }}>Report</Text>
+                </TouchableOpacity>
               </View>
             );
           })}

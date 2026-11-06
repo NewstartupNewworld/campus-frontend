@@ -66,7 +66,7 @@ export default function DoubtScreen({ navigation }: any) {
         </View>
 
         {/* Subject chips */}
-        <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}
+        <ScrollView horizontal style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
           {SUBJECTS.map(s => (
             <TouchableOpacity key={s} onPress={() => setSubject(s)}

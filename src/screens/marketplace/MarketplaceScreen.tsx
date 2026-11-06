@@ -500,7 +500,7 @@ const makeStyles = (Colors: any) =>
     historyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingHorizontal: 6 },
     historyText: { flex: 1, fontSize: 14, color: Colors.text },
 
-    categories: { flexGrow: 0, marginBottom: 6 },
+    categories: { flexGrow: 0, flexShrink: 0, marginBottom: 6 },
     categoriesContent: { paddingHorizontal: 16, gap: 8 },
     pill: {
       minHeight: 36, justifyContent: 'center', borderRadius: 18, paddingHorizontal: 14,

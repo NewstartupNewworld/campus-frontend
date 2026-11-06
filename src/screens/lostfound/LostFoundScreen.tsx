@@ -129,7 +129,7 @@ export default function LostFoundScreen({ navigation }: any) {
       </View>
 
       {/* Category chips */}
-      <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false}
+      <ScrollView horizontal style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
         {CATEGORIES.map(c => (
           <TouchableOpacity key={c} onPress={() => setCategory(c)}
