@@ -18,7 +18,7 @@ const isConfigured = (): boolean =>
 
 // Reads a photo on the phone and returns it as base64 text (a data URI).
 // XMLHttpRequest is used on purpose: fetch().blob() fails on this Expo version.
-const readPhoto = (uri: string): Promise<string> =>
+export const readPhoto = (uri: string): Promise<string> =>
   new Promise<string>((resolve, reject) => {
     if (uri.startsWith('data:')) {
       resolve(uri);

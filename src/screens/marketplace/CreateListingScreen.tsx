@@ -1,3 +1,4 @@
+import { readPhoto } from '../../utils/cloudinary';
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -122,7 +123,7 @@ export const CreateListingScreen = () => {
 
   const uploadToCloudinary = async (uri: string): Promise<string> => {
     const formData = new FormData();
-    formData.append('file', { uri, type: 'image/jpeg', name: 'upload.jpg' } as any);
+    formData.append('file', await readPhoto(uri));
     formData.append('upload_preset', 'campusconnect');
     formData.append('cloud_name', 'dmbvixvns');
     const res = await fetch('https://api.cloudinary.com/v1_1/dmbvixvns/image/upload', { method: 'POST', body: formData });

@@ -487,9 +487,9 @@ export const BuzzScreen = () => {
         const mapped: BuzzPost[] = data.posts.map((p: any) => ({
           id: p.id, author: p.author, category: p.category, content: p.content,
           image: p.image_url || undefined,
-          reactions: DEFAULT_REACTIONS.map(r => ({ ...r })),
+          reactions: DEFAULT_REACTIONS.map(r => { const hit = (Array.isArray(p.reaction_summary) ? p.reaction_summary : []).find((x: any) => x.emoji === r.emoji); return { ...r, count: hit ? Number(hit.count) : 0, reacted: !!(hit && hit.mine) }; }),
           comments: [], comment_count: parseInt(p.comment_count) || 0,
-          createdAt: p.created_at, trending: parseInt(p.comment_count) > 5, isOwner: !!p.isOwner,
+          createdAt: p.created_at, trending: parseInt(p.comment_count) > 5, isOwner: !!p.isOwner, saved: !!p.saved,
         }));
         if (append) { setPosts(prev => [...prev, ...mapped]); } else { setPosts(mapped); }
         setHasMore(mapped.length === 20);
