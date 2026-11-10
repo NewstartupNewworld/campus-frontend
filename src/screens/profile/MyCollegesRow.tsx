@@ -104,7 +104,7 @@ export default function MyCollegesRow({ onChanged }: { onChanged?: () => void })
   const submit = async () => {
     if (saving) return;
     if (name.trim().length < 3) return Alert.alert('College name', 'Please enter the full college name.');
-    if (!proofUri) return Alert.alert('Proof needed', 'Please add a photo of your ID card or admission proof for this college.');
+    if (!proofUri) return Alert.alert('Proof needed', 'Please add a photo that shows the school or college name (ID card, marksheet, certificate or building board).');
     try {
       setSaving(true);
       const uploaded = await uploadLocalImage(proofUri);
@@ -283,7 +283,7 @@ export default function MyCollegesRow({ onChanged }: { onChanged?: () => void })
                     </View>
                   </View>
 
-                  <Text style={label}>Proof (ID card or admission photo)</Text>
+                  <Text style={label}>Photo with the school or college name (ID card, marksheet, certificate or building board)</Text>
                   {proofUri ? (
                     <Image source={{ uri: proofUri }} resizeMode="contain" style={{ width: '100%', height: 150, borderRadius: 12, backgroundColor: colors.bg, marginBottom: 8 }} />
                   ) : null}

@@ -32,6 +32,9 @@ import NotesScreen from '../screens/academic/NotesScreen';
 import DoubtScreen from '../screens/academic/DoubtScreen';
 import StudyPlannerScreen from '../screens/academic/StudyPlannerScreen';
 import PYQScreen from '../screens/academic/PYQScreen';
+import PYQHubScreen from '../screens/academic/PYQHubScreen';
+import AddPYQScreen from '../screens/academic/AddPYQScreen';
+import PYQPaperScreen from '../screens/academic/PYQPaperScreen';
 import SeniorGuideScreen from '../screens/academic/SeniorGuideScreen';
 import SetCourseScreen from '../screens/academic/SetCourseScreen';
 
@@ -159,7 +162,7 @@ function AcademicStackScreen() {
       <AcademicStack.Screen name="Notes" component={NotesScreen} />
       <AcademicStack.Screen name="Doubt" component={DoubtScreen} />
       <AcademicStack.Screen name="StudyPlanner" component={StudyPlannerScreen} />
-      <AcademicStack.Screen name="PYQ" component={PYQScreen} />
+      <AcademicStack.Screen name="PYQ" component={PYQHubScreen} /><AcademicStack.Screen name="PYQAnalyse" component={PYQScreen} /><AcademicStack.Screen name="AddPYQ" component={AddPYQScreen} /><AcademicStack.Screen name="PYQPaper" component={PYQPaperScreen} />
       <AcademicStack.Screen name="SeniorGuide" component={SeniorGuideScreen} />
       <AcademicStack.Screen name="SetCourse" component={SetCourseScreen} />
     </AcademicStack.Navigator>

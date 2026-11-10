@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../theme/ThemeProvider';
+import { CoverBanner, EducationSection } from '../profile/ProfileExtras';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
 
@@ -189,7 +190,7 @@ export default function PublicProfileScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120, gap: 16 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120, gap: 16 }} showsVerticalScrollIndicator={false}><CoverBanner userId={user.id} />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <View style={{ width: 72, height: 72, borderRadius: 22, backgroundColor: '#2F54EB', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: '#fff', fontSize: 24, fontWeight: '800' }}>{user.anonymous_handle.slice(0, 2).toUpperCase()}</Text>
@@ -216,7 +217,7 @@ export default function PublicProfileScreen() {
             <Stat value={user.trust_score ?? 0} label="Trust" />
           </View>
 
-          {isMe ? (
+          <EducationSection userId={user.id} />{isMe ? (
             <View style={{ alignItems: 'center', padding: 14, borderRadius: 14, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
               <Text style={{ color: colors.textMuted, fontSize: 13 }}>This is your profile</Text>
             </View>
