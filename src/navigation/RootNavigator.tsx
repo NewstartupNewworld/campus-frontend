@@ -1,3 +1,4 @@
+import BlockedScreen from '../screens/profile/BlockedScreen';
 import DirectChatScreen from '../screens/chat/DirectChatScreen';
 import DirectChatsScreen from '../screens/chat/DirectChatsScreen';
 import PublicProfileScreen from '../screens/social/PublicProfileScreen';
@@ -104,12 +105,12 @@ export function RootNavigator() {
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isLoggedIn ? (
-          <><Stack.Screen name="Main" component={TabNavigator} /><Stack.Screen name="DirectChat" component={DirectChatScreen} /><Stack.Screen name="DirectChats" component={DirectChatsScreen} /><Stack.Screen name="PublicProfile" component={PublicProfileScreen} /><Stack.Screen name="FollowList" component={FollowListScreen} /></>
+          <><Stack.Screen name="Main" component={TabNavigator} /><Stack.Screen name="DirectChat" component={DirectChatScreen} /><Stack.Screen name="DirectChats" component={DirectChatsScreen} /><Stack.Screen name="PublicProfile" component={PublicProfileScreen} /><Stack.Screen name="FollowList" component={FollowListScreen} /><Stack.Screen name="Blocked" component={BlockedScreen} /></>
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
-            <><Stack.Screen name="Main" component={TabNavigator} /><Stack.Screen name="DirectChat" component={DirectChatScreen} /><Stack.Screen name="DirectChats" component={DirectChatsScreen} /><Stack.Screen name="PublicProfile" component={PublicProfileScreen} /><Stack.Screen name="FollowList" component={FollowListScreen} /></>
+            <><Stack.Screen name="Main" component={TabNavigator} /><Stack.Screen name="DirectChat" component={DirectChatScreen} /><Stack.Screen name="DirectChats" component={DirectChatsScreen} /><Stack.Screen name="PublicProfile" component={PublicProfileScreen} /><Stack.Screen name="FollowList" component={FollowListScreen} /><Stack.Screen name="Blocked" component={BlockedScreen} /></>
           </>
         )}
       </Stack.Navigator>

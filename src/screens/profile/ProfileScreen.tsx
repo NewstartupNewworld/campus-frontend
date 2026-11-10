@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import VerificationRow from './VerificationRow';
-import EditProfileRow from './EditProfileRow'; import MyCollegesRow from './MyCollegesRow'; import FollowsRow from './FollowsRow'; import AnonymousRow from './AnonymousRow'; import MessagesRow from './MessagesRow';
+import EditProfileRow from './EditProfileRow'; import MyCollegesRow from './MyCollegesRow'; import FollowsRow from './FollowsRow'; import BlockedRow from './BlockedRow'; import AnonymousRow from './AnonymousRow'; import MessagesRow from './MessagesRow';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -349,7 +349,7 @@ export const ProfileScreen = () => {
 
         {/* Edit profile (college stays locked) */}
         <View style={{ marginHorizontal: 16, marginTop: 10 }}>
-          <EditProfileRow onSaved={load} /><View style={{ height: 10 }} /><MyCollegesRow onChanged={load} /><View style={{ height: 10 }} /><MessagesRow /><View style={{ height: 10 }} /><FollowsRow /><View style={{ height: 10 }} /><AnonymousRow />
+          <EditProfileRow onSaved={load} /><View style={{ height: 10 }} /><MyCollegesRow onChanged={load} /><View style={{ height: 10 }} /><MessagesRow /><View style={{ height: 10 }} /><FollowsRow /><View style={{ height: 10 }} /><BlockedRow /><View style={{ height: 10 }} /><AnonymousRow />
         </View>
 
         {/* Trust score */}

@@ -98,6 +98,36 @@ export default function PublicProfileScreen() {
     }
   };
 
+  const confirmBlock = () => {
+    if (!user) return;
+    Alert.alert(
+      `Block ${user.anonymous_handle}?`,
+      "You will not see each other's posts and cannot message each other. You can unblock from Profile, Blocked students.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('token');
+              const res = await fetch(`${API_URL}/api/safety/block`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ userId: user.id }),
+              });
+              if (!res.ok) throw new Error('failed');
+              Alert.alert('Blocked', `${user.anonymous_handle} is blocked.`);
+              navigation.goBack();
+            } catch {
+              Alert.alert('Could not block', 'Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const joined = user?.created_at
     ? new Date(user.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     : '';
@@ -129,6 +159,17 @@ export default function PublicProfileScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>Profile</Text>
+        <View style={{ flex: 1 }} />
+        {user && !isMe ? (
+          <TouchableOpacity
+            onPress={confirmBlock}
+            style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
+            accessibilityRole="button"
+            accessibilityLabel="Block this student"
+          >
+            <Ionicons name="ban-outline" size={22} color={colors.danger} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {loading ? (
