@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
+import { thumb } from '../../utils/img';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
 const CATEGORIES = ['All', 'Books', 'Electronics', 'Clothes', 'Food', 'Others'];
@@ -161,7 +162,7 @@ export const MarketplaceScreen = () => {
       >
         <View style={styles.photo}>
           {img ? (
-            <Image source={{ uri: img }} style={styles.photoImg} resizeMode="cover" />
+            <Image source={{ uri: thumb(img, 600) }} style={styles.photoImg} resizeMode="cover" />
           ) : (
             <Ionicons name="image-outline" size={30} color={Colors.textDim} />
           )}

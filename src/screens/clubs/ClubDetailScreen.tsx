@@ -5,6 +5,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
+import MediaPicker from '../../components/MediaPicker';
+import MediaView from '../../components/MediaView';
+import EngageBar from '../../components/EngageBar';
+import { uploadMedia, PickedMedia } from '../../utils/media';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
@@ -18,6 +22,7 @@ export default function ClubDetailScreen({ route, navigation }: any) {
   const [activeTab, setActiveTab] = useState<'posts' | 'members'>('posts');
   const [newPost, setNewPost] = useState('');
   const [posting, setPosting] = useState(false);
+  const [postMedia, setPostMedia] = useState<PickedMedia | null>(null);
 
   useEffect(() => { fetchClub(); }, []);
 
@@ -59,11 +64,11 @@ export default function ClubDetailScreen({ route, navigation }: any) {
       const res = await fetch(`${BASE_URL}/api/clubs/${clubId}/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content: newPost.trim() }),
+        body: JSON.stringify({ content: newPost.trim(), imageUrl: postMedia ? await uploadMedia(postMedia) : null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setNewPost('');
+      setNewPost(''); setPostMedia(null);
       fetchClub();
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -136,7 +141,7 @@ export default function ClubDetailScreen({ route, navigation }: any) {
                   placeholder="Post an announcement..." placeholderTextColor={colors.textDim}
                   multiline style={{ color: colors.text, fontSize: 14, minHeight: 60, textAlignVertical: 'top' }}
                 />
-                <TouchableOpacity onPress={submitPost} disabled={posting || !newPost.trim()}
+                <MediaPicker media={postMedia} onChange={setPostMedia} disabled={posting} /><TouchableOpacity onPress={submitPost} disabled={posting || !newPost.trim()}
                   style={{ backgroundColor: newPost.trim() ? '#7C5CFF' : colors.cardAlt, borderRadius: 10, padding: 10, alignItems: 'center', marginTop: 8 }}>
                   {posting ? <ActivityIndicator color="#fff" size="small" /> :
                     <Text style={{ color: newPost.trim() ? '#fff' : colors.textDim, fontWeight: '600' }}>Post</Text>}
@@ -154,7 +159,7 @@ export default function ClubDetailScreen({ route, navigation }: any) {
                   <Text style={{ color: '#7C5CFF', fontSize: 13, fontWeight: '600' }}>{post.anonymous_handle}</Text>
                   <Text style={{ color: colors.textDim, fontSize: 11 }}>{timeAgo(post.created_at)}</Text>
                 </View>
-                <Text style={{ color: colors.textMuted, fontSize: 14, lineHeight: 22 }}>{post.content}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 14, lineHeight: 22 }}>{post.content}</Text>{post.image_url ? <View style={{ marginTop: 10 }}><MediaView uri={post.image_url} height={200} /></View> : null}<View style={{ marginTop: 10 }}><EngageBar targetType="clubpost" targetId={String(post.id)} /></View>
               </View>
             ))}
           </>

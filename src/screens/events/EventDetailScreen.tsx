@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
+import EngageBar from '../../components/EngageBar';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
@@ -208,6 +209,8 @@ export default function EventDetailScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
+
+        <View style={{ marginBottom: 16 }}><EngageBar targetType="event" targetId={String(eventId)} /></View>
 
         {/* Posted by */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>

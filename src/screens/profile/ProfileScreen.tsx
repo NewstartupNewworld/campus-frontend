@@ -10,6 +10,7 @@ import EditProfileRow from './EditProfileRow'; import MyCollegesRow from './MyCo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { thumb } from '../../utils/img';
 import { useTheme, useColors } from '../../theme/ThemeProvider';
 import {
   SOSButtonMode, getSOSButtonMode, setSOSButtonMode, onSOSButtonModeChange,
@@ -443,7 +444,7 @@ export const ProfileScreen = () => {
                 return (
                   <View key={l.id} style={styles.listingRow}>
                     {img ? (
-                      <Image source={{ uri: img }} style={styles.thumb} />
+                      <Image source={{ uri: thumb(img, 120) }} style={styles.thumb} />
                     ) : (
                       <View style={[styles.thumb, styles.thumbEmpty]}>
                         <Ionicons name="image-outline" size={18} color={Colors.textDim} />

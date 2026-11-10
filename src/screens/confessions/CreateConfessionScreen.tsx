@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
+import MediaPicker from '../../components/MediaPicker';
+import { uploadMedia, PickedMedia } from '../../utils/media';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const CATEGORIES = [
@@ -21,6 +23,7 @@ export default function CreateConfessionScreen({ navigation }: any) {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('General');
   const [loading, setLoading] = useState(false);
+  const [media, setMedia] = useState<PickedMedia | null>(null);
   const maxChars = 500;
 
   const submit = async () => {
@@ -32,7 +35,7 @@ export default function CreateConfessionScreen({ navigation }: any) {
       const res = await fetch(`${BASE_URL}/api/confessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content: content.trim(), category }),
+        body: JSON.stringify({ content: content.trim(), category, imageUrl: media ? await uploadMedia(media) : null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -110,6 +113,8 @@ export default function CreateConfessionScreen({ navigation }: any) {
         }}>
           {content.length}/{maxChars}
         </Text>
+
+        <MediaPicker media={media} onChange={setMedia} disabled={loading} />
 
         {/* Submit */}
         <TouchableOpacity onPress={submit} disabled={loading || !content.trim()}

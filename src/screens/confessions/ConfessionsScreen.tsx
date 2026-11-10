@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
 import EngageBar from '../../components/EngageBar';
+import MediaView from '../../components/MediaView';
 import { EngageSummary, fetchEngageSummary } from '../../utils/engage';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
@@ -26,6 +27,7 @@ const CAT_CONFIG: Record<string, { icon: IconName; color: string }> = {
 type Confession = {
   id: string | number;
   content: string;
+  image_url?: string | null;
   category: string;
   created_at: string;
 };
@@ -172,7 +174,7 @@ export default function ConfessionsScreen({ navigation }: any) {
                 </Text>
 
                 {/* Reactions and comments */}
-                <EngageBar targetType="confession" targetId={key} summary={summary[key]} />
+                {confession.image_url ? <View style={{ marginBottom: 12 }}><MediaView uri={confession.image_url} height={200} /></View> : null}<EngageBar targetType="confession" targetId={key} summary={summary[key]} />
 
                 <TouchableOpacity onPress={() => reportConfession(confession.id)}
                   style={{ alignSelf: 'flex-end', marginTop: 10, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
