@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../theme/ThemeProvider';
 import PasswordInput from '../../components/PasswordInput';
 import { useKeyboardPadding } from '../../utils/useKeyboardPadding';
+import { authRequest, isValidEmail, passwordProblem } from '../../utils/authApi';
 
 type AuthStackParamList = {
   Login: undefined; Signup: undefined; Main: undefined;
@@ -39,6 +40,8 @@ const getCollegeImage = (collegeName: string): string => {
   return COLLEGE_IMAGES['default'];
 };
 
+const STEP1_FIELDS = ['email', 'studentName', 'studentId', 'phone', 'password', 'confirm'];
+
 const softShadow = {
   shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.12, shadowRadius: 6, elevation: 3,
@@ -50,17 +53,21 @@ const cardShadow = {
 
 // Kept outside SignupScreen on purpose: a component defined inside would be rebuilt on every
 // keystroke and close the keyboard.
-const Field = ({ icon, children }: { icon: IconName; children: React.ReactNode }) => {
+const Field = ({ icon, error, children }: { icon: IconName; error?: string; children: React.ReactNode }) => {
   const Colors = useColors();
   return (
-    <View
-      style={{
-        flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg,
-        borderRadius: 13, paddingHorizontal: 12, marginBottom: 12, ...softShadow,
-      }}
-    >
-      <Ionicons name={icon} size={17} color={Colors.textMuted} style={{ marginRight: 8 }} />
-      {children}
+    <View style={{ marginBottom: 12 }}>
+      <View
+        style={{
+          flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg,
+          borderRadius: 13, paddingHorizontal: 12,
+          borderWidth: error ? 1 : 0, borderColor: Colors.danger, ...softShadow,
+        }}
+      >
+        <Ionicons name={icon} size={17} color={Colors.textMuted} style={{ marginRight: 8 }} />
+        {children}
+      </View>
+      {error ? <Text style={{ color: Colors.danger, fontSize: 11.5, marginTop: 5, marginLeft: 4 }}>{error}</Text> : null}
     </View>
   );
 };
@@ -73,6 +80,7 @@ export const SignupScreen = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [verifyMethod, setVerifyMethod] = useState<VerifyMethod>('email');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [email, setEmail] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -88,6 +96,15 @@ export const SignupScreen = () => {
   const [interests, setInterests] = useState('');
 
   const collegeImage = getCollegeImage(college);
+  const needsEmail = verifyMethod === 'email' || verifyMethod === 'digitalId';
+
+  const clear = (key: string) =>
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.bg },
@@ -121,6 +138,7 @@ export const SignupScreen = () => {
 
     divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginVertical: 14 },
     label: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 7, marginTop: 4 },
+    hint: { fontSize: 11.5, color: Colors.textDim, marginTop: -4, marginBottom: 12, marginLeft: 4 },
 
     input: { flex: 1, color: Colors.text, fontSize: 13.5, paddingVertical: 12 },
 
@@ -145,7 +163,7 @@ export const SignupScreen = () => {
   const MethodCard = ({ method, icon, title, sub }: { method: VerifyMethod; icon: IconName; title: string; sub: string }) => (
     <TouchableOpacity
       style={[styles.methodCard, verifyMethod === method && styles.methodCardActive]}
-      onPress={() => setVerifyMethod(method)}
+      onPress={() => { setVerifyMethod(method); setErrors({}); }}
       accessibilityRole="button"
       accessibilityLabel={title}
     >
@@ -162,56 +180,67 @@ export const SignupScreen = () => {
     </TouchableOpacity>
   );
 
-  const validateStep1 = () => {
-    if (!password || !confirmPassword) { Alert.alert('Missing fields', 'Please fill all fields.'); return false; }
-    if (password.length < 8) { Alert.alert('Weak password', 'Password must be at least 8 characters.'); return false; }
-    if (password !== confirmPassword) { Alert.alert('Password mismatch', 'Passwords do not match.'); return false; }
-    if (verifyMethod === 'email' && !email.includes('@')) { Alert.alert('Invalid email', 'Enter a valid email address.'); return false; }
-    if (verifyMethod === 'studentId' && (!studentId.trim() || !studentName.trim() || !phoneNumber.trim())) {
-      Alert.alert('Missing fields', 'Please fill Student ID, Name and Phone.'); return false;
+  const validateStep1 = (): boolean => {
+    const next: Record<string, string> = {};
+    if (needsEmail) {
+      if (!email.trim()) next.email = 'Please enter your email.';
+      else if (!isValidEmail(email)) next.email = 'This email does not look right.';
     }
-    return true;
+    if (verifyMethod === 'studentId') {
+      if (studentName.trim().length < 2) next.studentName = 'Please enter your full name.';
+      if (studentId.trim().length < 3) next.studentId = 'Please enter your student or roll number.';
+      if (phoneNumber.replace(/\D/g, '').length !== 10) next.phone = 'Please enter a 10 digit mobile number.';
+    }
+    const weak = passwordProblem(password);
+    if (weak) next.password = weak;
+    if (!confirmPassword) next.confirm = 'Please repeat your password.';
+    else if (password !== confirmPassword) next.confirm = 'The two passwords do not match.';
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleStep1 = () => { if (validateStep1()) setStep(2); };
 
   const handleSignup = async () => {
-    if (!college.trim() || !department.trim() || !year.trim()) {
-      Alert.alert('Missing fields', 'Please fill College, Department and Year.'); return;
-    }
+    if (loading) return;
+    const next: Record<string, string> = {};
+    if (college.trim().length < 3) next.college = 'Please enter your college name.';
+    if (department.trim().length < 2) next.department = 'Please enter your department.';
+    if (!year.trim()) next.year = 'Please enter your year or semester.';
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
     setLoading(true);
-    try {
-      const response = await fetch('https://campus-backend-arfy.onrender.com/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          verifyMethod,
-          email: email.trim() || null,
-          studentId: studentId.trim() || null,
-          studentName: studentName.trim() || null,
-          phoneNumber: phoneNumber.trim() || null,
-          password,
-          college: college.trim(),
-          department: department.trim(),
-          year: year.trim(),
-          course: course.trim() || null,
-          hostel: hostel.trim() || null,
-          interests: interests.trim() || null,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Signup failed');
-      await AsyncStorage.setItem('token', data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(data.user));
-      navigation.navigate('Main' as never);
-    } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.includes('Network')) {
-        Alert.alert('Could not reach the server', 'The server may be waking up. Please try again in a minute.');
+    const result = await authRequest('signup', {
+      verifyMethod,
+      email: email.trim() || null,
+      studentId: studentId.trim() || null,
+      studentName: studentName.trim() || null,
+      phoneNumber: phoneNumber.replace(/\D/g, '') || null,
+      password,
+      college: college.trim(),
+      department: department.trim(),
+      year: year.trim(),
+      course: course.trim() || null,
+      hostel: hostel.trim() || null,
+      interests: interests.trim() || null,
+    });
+    setLoading(false);
+
+    if (!result.ok) {
+      if (result.field) {
+        // Show the message under the right box, on the right step
+        setErrors({ [result.field]: result.message });
+        setStep(STEP1_FIELDS.includes(result.field) ? 1 : 2);
       } else {
-        Alert.alert('Signup failed', msg || 'Something went wrong. Try again.');
+        Alert.alert(result.title, result.message);
       }
-    } finally { setLoading(false); }
+      return;
+    }
+
+    await AsyncStorage.setItem('token', result.data.token);
+    await AsyncStorage.setItem('user', JSON.stringify(result.data.user));
+    navigation.navigate('Main' as never);
   };
 
   return (
@@ -222,11 +251,7 @@ export const SignupScreen = () => {
       style={[styles.container, { paddingTop: insets.top }]}
     >
       <View style={{ flex: 1, paddingBottom: pad }}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           <View style={styles.header}>
             <TouchableOpacity
@@ -253,7 +278,7 @@ export const SignupScreen = () => {
               <Text style={[styles.stepSub, { marginTop: 4 }]}>Choose how you want to sign up</Text>
               <MethodCard method="email" icon="mail-outline" title="College Email" sub="Use your .ac.in or institute email" />
               <MethodCard method="studentId" icon="card-outline" title="Student ID Number" sub="Enter your enrollment / roll number" />
-              <MethodCard method="digitalId" icon="phone-portrait-outline" title="Digital ID Card" sub="You will upload the ID photo after signing up" />
+              <MethodCard method="digitalId" icon="phone-portrait-outline" title="Digital ID Card" sub="Sign up with email, upload the ID photo after" />
 
               <View style={styles.idNote}>
                 <Ionicons name="shield-checkmark-outline" size={18} color={Colors.accent} />
@@ -264,11 +289,20 @@ export const SignupScreen = () => {
               </View>
               <View style={styles.divider} />
 
-              {verifyMethod === 'email' && (
+              {needsEmail && (
                 <>
-                  <Text style={styles.label}>College Email</Text>
-                  <Field icon="mail-outline">
-                    <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@college.ac.in" placeholderTextColor={Colors.textDim} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                  <Text style={styles.label}>{verifyMethod === 'email' ? 'College Email' : 'Email'}</Text>
+                  <Field icon="mail-outline" error={errors.email}>
+                    <TextInput
+                      style={styles.input}
+                      value={email}
+                      onChangeText={(v) => { setEmail(v); clear('email'); }}
+                      placeholder="you@college.ac.in"
+                      placeholderTextColor={Colors.textDim}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
                   </Field>
                 </>
               )}
@@ -276,27 +310,29 @@ export const SignupScreen = () => {
               {verifyMethod === 'studentId' && (
                 <>
                   <Text style={styles.label}>Full Name</Text>
-                  <Field icon="person-outline">
-                    <TextInput style={styles.input} value={studentName} onChangeText={setStudentName} placeholder="As on your ID card" placeholderTextColor={Colors.textDim} />
+                  <Field icon="person-outline" error={errors.studentName}>
+                    <TextInput style={styles.input} value={studentName} onChangeText={(v) => { setStudentName(v); clear('studentName'); }} placeholder="As on your ID card" placeholderTextColor={Colors.textDim} />
                   </Field>
                   <Text style={styles.label}>Student / Roll Number</Text>
-                  <Field icon="card-outline">
-                    <TextInput style={styles.input} value={studentId} onChangeText={setStudentId} placeholder="e.g. 21CS10045" placeholderTextColor={Colors.textDim} autoCapitalize="characters" />
+                  <Field icon="card-outline" error={errors.studentId}>
+                    <TextInput style={styles.input} value={studentId} onChangeText={(v) => { setStudentId(v); clear('studentId'); }} placeholder="e.g. 21CS10045" placeholderTextColor={Colors.textDim} autoCapitalize="characters" />
                   </Field>
                   <Text style={styles.label}>Phone Number</Text>
-                  <Field icon="call-outline">
-                    <TextInput style={styles.input} value={phoneNumber} onChangeText={setPhoneNumber} placeholder="10-digit mobile number" placeholderTextColor={Colors.textDim} keyboardType="phone-pad" maxLength={10} />
+                  <Field icon="call-outline" error={errors.phone}>
+                    <TextInput style={styles.input} value={phoneNumber} onChangeText={(v) => { setPhoneNumber(v); clear('phone'); }} placeholder="10-digit mobile number" placeholderTextColor={Colors.textDim} keyboardType="phone-pad" maxLength={10} />
                   </Field>
                 </>
               )}
 
               <Text style={styles.label}>Create Password</Text>
-              <Field icon="lock-closed-outline">
-                <PasswordInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Min 8 characters" placeholderTextColor={Colors.textDim} />
+              <Field icon="lock-closed-outline" error={errors.password}>
+                <PasswordInput style={styles.input} value={password} onChangeText={(v) => { setPassword(v); clear('password'); }} placeholder="Min 8 characters" placeholderTextColor={Colors.textDim} />
               </Field>
+              {!errors.password ? <Text style={styles.hint}>At least 8 characters, with a letter and a number.</Text> : null}
+
               <Text style={styles.label}>Confirm Password</Text>
-              <Field icon="lock-closed-outline">
-                <PasswordInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repeat your password" placeholderTextColor={Colors.textDim} />
+              <Field icon="lock-closed-outline" error={errors.confirm}>
+                <PasswordInput style={styles.input} value={confirmPassword} onChangeText={(v) => { setConfirmPassword(v); clear('confirm'); }} placeholder="Repeat your password" placeholderTextColor={Colors.textDim} />
               </Field>
 
               <TouchableOpacity style={styles.nextBtn} onPress={handleStep1} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Continue">
@@ -317,8 +353,8 @@ export const SignupScreen = () => {
               <Text style={styles.stepSub}>Tell us about yourself so we can connect you with the right people.</Text>
 
               <Text style={styles.label}>College Name *</Text>
-              <Field icon="business-outline">
-                <TextInput style={styles.input} value={college} onChangeText={setCollege} placeholder="e.g. IIT Kharagpur" placeholderTextColor={Colors.textDim} />
+              <Field icon="business-outline" error={errors.college}>
+                <TextInput style={styles.input} value={college} onChangeText={(v) => { setCollege(v); clear('college'); }} placeholder="e.g. IIT Kharagpur" placeholderTextColor={Colors.textDim} />
               </Field>
 
               {collegeImage ? (
@@ -331,12 +367,12 @@ export const SignupScreen = () => {
               ) : null}
 
               <Text style={styles.label}>Department *</Text>
-              <Field icon="library-outline">
-                <TextInput style={styles.input} value={department} onChangeText={setDepartment} placeholder="e.g. Computer Science, Mechanical..." placeholderTextColor={Colors.textDim} />
+              <Field icon="library-outline" error={errors.department}>
+                <TextInput style={styles.input} value={department} onChangeText={(v) => { setDepartment(v); clear('department'); }} placeholder="e.g. Computer Science, Mechanical..." placeholderTextColor={Colors.textDim} />
               </Field>
               <Text style={styles.label}>Year / Semester *</Text>
-              <Field icon="calendar-outline">
-                <TextInput style={styles.input} value={year} onChangeText={setYear} placeholder="e.g. 2nd Year, Semester 3..." placeholderTextColor={Colors.textDim} />
+              <Field icon="calendar-outline" error={errors.year}>
+                <TextInput style={styles.input} value={year} onChangeText={(v) => { setYear(v); clear('year'); }} placeholder="e.g. 2nd Year, Semester 3..." placeholderTextColor={Colors.textDim} />
               </Field>
               <Text style={styles.label}>Course / Program</Text>
               <Field icon="school-outline">
@@ -378,3 +414,4 @@ export const SignupScreen = () => {
     </View>
   );
 };
+// END OF FILE

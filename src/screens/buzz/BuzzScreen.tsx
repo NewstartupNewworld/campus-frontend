@@ -4,14 +4,14 @@ import {
   Modal, Alert, ActivityIndicator, Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../theme/ThemeProvider';
-import { uploadLocalImage } from '../../utils/chatUpload';
 import { useKeyboardPadding } from '../../utils/useKeyboardPadding';
+import { pickMedia, uploadMedia, isVideoUrl, PickedMedia } from '../../utils/media';
+import MediaView from '../../components/MediaView';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
 
@@ -29,26 +29,19 @@ const CATEGORY_COLORS: Record<string, string> = {
   Meme: '#FFB347', Event: '#4F8CFF', Food: '#3DDC84', 'Lost & Found': '#FF5C5C', Rant: '#C97BFF', News: '#00C9FF',
 };
 // These emojis are the reactions themselves (the server stores them), so they stay as text
+const FIRE = '\uD83D\uDD25';
 const DEFAULT_REACTIONS = [
-  { emoji: '🔥', count: 0, reacted: false },
-  { emoji: '❤️', count: 0, reacted: false },
-  { emoji: '😂', count: 0, reacted: false },
+  { emoji: FIRE, count: 0, reacted: false },
+  { emoji: '\u2764\uFE0F', count: 0, reacted: false },
+  { emoji: '\uD83D\uDE02', count: 0, reacted: false },
 ];
 const STORY_COLORS = ['#FF6B6B', '#4F8CFF', '#FFB347', '#3DDC84', '#C97BFF', '#00C9FF'];
 
 const cardShadow = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.18,
-  shadowRadius: 10,
-  elevation: 4,
+  shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10, elevation: 4,
 };
 const softShadow = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.12,
-  shadowRadius: 5,
-  elevation: 2,
+  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 5, elevation: 2,
 };
 
 // Makes a colour slightly see-through. Only works on #RRGGBB colours, otherwise returns it unchanged.
@@ -65,24 +58,24 @@ const timeAgo = (iso: string) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
-const ImageViewerModal = ({ visible, uri, onClose }: { visible: boolean; uri: string | null; onClose: () => void }) => {
-  if (!uri) return null;
+// A photo opens full screen when tapped. A video waits for a tap, so a long feed does not start many players at once.
+const FeedMedia = ({ uri }: { uri: string }) => {
+  const [playing, setPlaying] = useState(false);
+  const video = isVideoUrl(uri);
+  if (!video || playing) return <MediaView uri={uri} height={video ? 220 : 200} />;
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={iv.overlay} activeOpacity={1} onPress={onClose}>
-        <Image source={{ uri }} style={iv.image} resizeMode="contain" />
-        <TouchableOpacity style={iv.closeBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close photo">
-          <Ionicons name="close" size={20} color="#fff" />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={() => setPlaying(true)}
+      accessibilityRole="button"
+      accessibilityLabel="Play video"
+      style={{ height: 160, borderRadius: 14, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <Ionicons name="play-circle" size={54} color="#fff" />
+      <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>Tap to play video</Text>
+    </TouchableOpacity>
   );
 };
-const iv = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
-  image: { width: '100%', height: '80%' },
-  closeBtn: { position: 'absolute', top: 50, right: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-});
 
 const StoriesRow = ({ posts, onOpenProfile }: { posts: BuzzPost[]; onOpenProfile: (handle: string) => void }) => {
   const Colors = useColors();
@@ -95,7 +88,7 @@ const StoriesRow = ({ posts, onOpenProfile }: { posts: BuzzPost[]; onOpenProfile
     initials: { fontSize: 14, fontWeight: '800' },
     name: { fontSize: 10, color: Colors.textMuted, width: 52, textAlign: 'center' },
   });
-  const uniqueAuthors = Array.from(new Set(posts.map(p => p.author))).slice(0, 8);
+  const uniqueAuthors = Array.from(new Set(posts.map((p) => p.author))).slice(0, 8);
   if (uniqueAuthors.length === 0) return null;
   return (
     <View style={sr.container}>
@@ -103,8 +96,9 @@ const StoriesRow = ({ posts, onOpenProfile }: { posts: BuzzPost[]; onOpenProfile
         data={uniqueAuthors}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={a => a}
+        keyExtractor={(a) => a}
         contentContainerStyle={sr.row}
+        style={{ flexGrow: 0, flexShrink: 0 }}
         renderItem={({ item, index }) => {
           const color = STORY_COLORS[index % STORY_COLORS.length];
           return (
@@ -168,7 +162,7 @@ const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
           <Text style={cs.sheetTitle}>Comments ({post.comments.length})</Text>
           <FlatList
             data={post.comments}
-            keyExtractor={c => c.id}
+            keyExtractor={(c) => c.id}
             style={cs.commentList}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<Text style={cs.emptyComments}>No comments yet. Be first!</Text>}
@@ -195,9 +189,9 @@ const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
   );
 };
 
-const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave, onOpenProfile }: {
+const PostCard = ({ post, onReact, onComment, onDelete, onSave, onOpenProfile }: {
   post: BuzzPost; onReact: (postId: string, emoji: string) => void; onComment: (post: BuzzPost) => void;
-  onDelete: (postId: string) => void; onImagePress: (uri: string) => void; onSave: (postId: string) => void;
+  onDelete: (postId: string) => void; onSave: (postId: string) => void;
   onOpenProfile: (handle: string) => void;
 }) => {
   const Colors = useColors();
@@ -214,7 +208,7 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave, on
     categoryText: { fontSize: 10, fontWeight: '700' },
     categoryWrap: { flexDirection: 'row', alignItems: 'center' },
     content: { fontSize: 13.5, color: Colors.text, lineHeight: 19, paddingHorizontal: 12, paddingBottom: 10 },
-    image: { width: '100%', height: 180 },
+    mediaWrap: { paddingHorizontal: 12, paddingBottom: 6 },
     reactionsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 9 },
     reactionBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bg, borderRadius: 18, overflow: 'hidden' },
     reactionSeg: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 9, paddingVertical: 6 },
@@ -238,11 +232,12 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave, on
   const heartScale = useRef(new Animated.Value(0)).current;
   const isOwner = !!post.isOwner;
 
+  // Double tap on the text gives a fire reaction
   const handleDoubleTap = () => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
-      const fireReaction = post.reactions.find(r => r.emoji === '🔥');
-      if (fireReaction && !fireReaction.reacted) onReact(post.id, '🔥');
+      const fireReaction = post.reactions.find((r) => r.emoji === FIRE);
+      if (fireReaction && !fireReaction.reacted) onReact(post.id, FIRE);
       heartScale.setValue(0);
       Animated.sequence([
         Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, friction: 3 }),
@@ -264,7 +259,7 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave, on
             <View style={ps.categoryWrap}>
               <View style={[ps.categoryDot, { backgroundColor: catColor }]} />
               <Text style={[ps.categoryText, { color: catColor }]}>{post.category}</Text>
-              <Text style={ps.postTime}> · {timeAgo(post.createdAt)}</Text>
+              <Text style={ps.postTime}> {'\u00b7'} {timeAgo(post.createdAt)}</Text>
               {post.trending ? <Ionicons name="flame" size={12} color="#F97316" style={{ marginLeft: 6 }} /> : null}
             </View>
           </View>
@@ -275,19 +270,20 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave, on
           </TouchableOpacity>
         ) : null}
       </View>
+
       <TouchableOpacity activeOpacity={1} onPress={handleDoubleTap}>
         <Text style={ps.content}>{post.content}</Text>
-        {post.image ? (
-          <View>
-            <TouchableOpacity activeOpacity={0.9} onPress={() => onImagePress(post.image!)} onLongPress={handleDoubleTap}>
-              <Image source={{ uri: post.image }} style={ps.image} resizeMode="cover" />
-            </TouchableOpacity>
-            <Animated.View pointerEvents="none" style={[ps.heartOverlay, { opacity: heartScale, transform: [{ scale: heartScale.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.4] }) }] }]}>
-              <Ionicons name="flame" size={76} color="#F97316" />
-            </Animated.View>
-          </View>
-        ) : null}
       </TouchableOpacity>
+
+      {post.image ? (
+        <View style={ps.mediaWrap}>
+          <FeedMedia uri={post.image} />
+          <Animated.View pointerEvents="none" style={[ps.heartOverlay, { opacity: heartScale, transform: [{ scale: heartScale.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.4] }) }] }]}>
+            <Ionicons name="flame" size={76} color="#F97316" />
+          </Animated.View>
+        </View>
+      ) : null}
+
       <View style={ps.reactionsRow}>
         <View style={ps.reactionBar}>
           {post.reactions.map((r, idx) => (
@@ -310,6 +306,7 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave, on
           <Ionicons name={post.saved ? 'bookmark' : 'bookmark-outline'} size={17} color={post.saved ? Colors.accent : Colors.textMuted} />
         </TouchableOpacity>
       </View>
+
       <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
         <TouchableOpacity style={ps.menuOverlay} activeOpacity={1} onPress={() => setShowMenu(false)}>
           <View style={ps.menuCard}>
@@ -332,14 +329,14 @@ const PostCard = ({ post, onReact, onComment, onDelete, onImagePress, onSave, on
 
 const CreatePostSheet = ({ visible, onClose, onPost }: {
   visible: boolean; onClose: () => void;
-  onPost: (content: string, category: PostCategory, image?: string) => Promise<boolean>;
+  onPost: (content: string, category: PostCategory, media: PickedMedia | null) => Promise<boolean>;
 }) => {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
   const { rootRef, onLayout, pad } = useKeyboardPadding({ modal: true });
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<PostCategory>('Meme');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [media, setMedia] = useState<PickedMedia | null>(null);
   const [posting, setPosting] = useState(false);
 
   const cps = StyleSheet.create({
@@ -354,37 +351,34 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
     pillText: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
     input: { backgroundColor: Colors.bg, borderRadius: 14, padding: 12, color: Colors.text, fontSize: 14, minHeight: 80 },
     charCount: { textAlign: 'right', fontSize: 11, color: Colors.textDim, marginTop: 4, marginBottom: 10 },
-    imagePreviewWrap: { position: 'relative', marginBottom: 10 },
+    previewWrap: { position: 'relative', marginBottom: 10 },
     imagePreview: { width: '100%', height: 140, borderRadius: 14 },
-    removeImage: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
-    mediaRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+    videoPreview: { height: 110, borderRadius: 14, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
+    removeMedia: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 14, width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+    mediaRow: { flexDirection: 'row', gap: 10, marginBottom: 6 },
     mediaBtn: { flex: 1, backgroundColor: Colors.bg, borderRadius: 14, minHeight: 44, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
     mediaBtnText: { fontSize: 13, fontWeight: '700', color: Colors.text },
+    mediaHint: { fontSize: 11, color: Colors.textDim, marginBottom: 12 },
     postBtn: { backgroundColor: Colors.accent, borderRadius: 14, minHeight: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
     postBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   });
 
-  const handlePickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow access to your photo library.'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.7 });
-    if (!result.canceled && result.assets[0]) setSelectedImage(result.assets[0].uri);
-  };
-
-  const handleCamera = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow camera access.'); return; }
-    const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.7 });
-    if (!result.canceled && result.assets[0]) setSelectedImage(result.assets[0].uri);
+  const choose = async (source: 'library' | 'camera') => {
+    try {
+      const picked = await pickMedia(source);
+      if (picked) setMedia(picked);
+    } catch (e: any) {
+      Alert.alert('Cannot use this file', e?.message ?? 'Please choose another one.');
+    }
   };
 
   const handlePost = async () => {
     if (!content.trim() || posting) return;
     setPosting(true);
-    const ok = await onPost(content.trim(), category, selectedImage || undefined);
+    const ok = await onPost(content.trim(), category, media);
     setPosting(false);
     if (ok) {
-      setContent(''); setCategory('Meme'); setSelectedImage(null);
+      setContent(''); setCategory('Meme'); setMedia(null);
       onClose();
     }
   };
@@ -398,7 +392,7 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
           <Text style={cps.title}>New Buzz Post</Text>
           <Text style={cps.anon}>Posted with your anonymous handle</Text>
           <View style={cps.pills}>
-            {(CATEGORIES.filter(c => c !== 'All') as PostCategory[]).map(cat => (
+            {(CATEGORIES.filter((c) => c !== 'All') as PostCategory[]).map((cat) => (
               <TouchableOpacity key={cat} style={[cps.pill, category === cat && { backgroundColor: (CATEGORY_COLORS[cat] ?? Colors.accent) + '22' }]} onPress={() => setCategory(cat)}>
                 <Text style={[cps.pillText, category === cat && { color: CATEGORY_COLORS[cat] ?? Colors.accent }]}>{cat}</Text>
               </TouchableOpacity>
@@ -406,24 +400,32 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
           </View>
           <TextInput style={cps.input} value={content} onChangeText={setContent} placeholder="What's happening on campus?" placeholderTextColor={Colors.textDim} multiline numberOfLines={4} textAlignVertical="top" maxLength={500} />
           <Text style={cps.charCount}>{content.length}/500</Text>
-          {selectedImage ? (
-            <View style={cps.imagePreviewWrap}>
-              <Image source={{ uri: selectedImage }} style={cps.imagePreview} resizeMode="cover" />
-              <TouchableOpacity style={cps.removeImage} onPress={() => setSelectedImage(null)} accessibilityRole="button" accessibilityLabel="Remove photo">
-                <Ionicons name="close" size={14} color="#fff" />
+          {media ? (
+            <View style={cps.previewWrap}>
+              {media.kind === 'image' ? (
+                <Image source={{ uri: media.uri }} style={cps.imagePreview} resizeMode="cover" />
+              ) : (
+                <View style={cps.videoPreview}>
+                  <Ionicons name="videocam" size={32} color="#fff" />
+                  <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 4 }}>Video selected</Text>
+                </View>
+              )}
+              <TouchableOpacity style={cps.removeMedia} onPress={() => setMedia(null)} accessibilityRole="button" accessibilityLabel="Remove the photo or video">
+                <Ionicons name="close" size={15} color="#fff" />
               </TouchableOpacity>
             </View>
           ) : null}
           <View style={cps.mediaRow}>
-            <TouchableOpacity style={cps.mediaBtn} onPress={handleCamera} accessibilityRole="button">
+            <TouchableOpacity style={cps.mediaBtn} onPress={() => choose('camera')} disabled={posting} accessibilityRole="button">
               <Ionicons name="camera-outline" size={18} color={Colors.text} />
               <Text style={cps.mediaBtnText}>Camera</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={cps.mediaBtn} onPress={handlePickImage} accessibilityRole="button">
-              <Ionicons name="image-outline" size={18} color={Colors.text} />
-              <Text style={cps.mediaBtnText}>Gallery</Text>
+            <TouchableOpacity style={cps.mediaBtn} onPress={() => choose('library')} disabled={posting} accessibilityRole="button">
+              <Ionicons name="images-outline" size={18} color={Colors.text} />
+              <Text style={cps.mediaBtnText}>Photo / Video</Text>
             </TouchableOpacity>
           </View>
+          <Text style={cps.mediaHint}>Video: up to 30 seconds and 30 MB.</Text>
           <TouchableOpacity style={[cps.postBtn, (!content.trim() || posting) && { opacity: 0.5 }]} onPress={handlePost} disabled={!content.trim() || posting} accessibilityRole="button" accessibilityLabel="Post to Buzz">
             {posting ? <ActivityIndicator color="#fff" /> : (
               <>
@@ -447,7 +449,6 @@ export const BuzzScreen = () => {
   const [activeCategory, setActiveCategory] = useState<PostCategory>('All');
   const [commentPost, setCommentPost] = useState<BuzzPost | null>(null);
   const [createVisible, setCreateVisible] = useState(false);
-  const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -484,14 +485,20 @@ export const BuzzScreen = () => {
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json();
       if (response.ok && data.posts) {
-        const mapped: BuzzPost[] = data.posts.map((p: any) => ({
-          id: p.id, author: p.author, category: p.category, content: p.content,
-          image: p.image_url || undefined,
-          reactions: DEFAULT_REACTIONS.map(r => { const hit = (Array.isArray(p.reaction_summary) ? p.reaction_summary : []).find((x: any) => x.emoji === r.emoji); return { ...r, count: hit ? Number(hit.count) : 0, reacted: !!(hit && hit.mine) }; }),
-          comments: [], comment_count: parseInt(p.comment_count) || 0,
-          createdAt: p.created_at, trending: parseInt(p.comment_count) > 5, isOwner: !!p.isOwner, saved: !!p.saved,
-        }));
-        if (append) { setPosts(prev => [...prev, ...mapped]); } else { setPosts(mapped); }
+        const mapped: BuzzPost[] = data.posts.map((p: any) => {
+          const summary: any[] = Array.isArray(p.reaction_summary) ? p.reaction_summary : [];
+          return {
+            id: p.id, author: p.author, category: p.category, content: p.content,
+            image: p.image_url || undefined,
+            reactions: DEFAULT_REACTIONS.map((r) => {
+              const hit = summary.find((x) => x.emoji === r.emoji);
+              return { ...r, count: hit ? Number(hit.count) : 0, reacted: !!(hit && hit.mine) };
+            }),
+            comments: [], comment_count: parseInt(p.comment_count) || 0,
+            createdAt: p.created_at, trending: parseInt(p.comment_count) > 5, isOwner: !!p.isOwner, saved: !!p.saved,
+          };
+        });
+        if (append) { setPosts((prev) => [...prev, ...mapped]); } else { setPosts(mapped); }
         setHasMore(mapped.length === 20);
       }
     } catch (e) { console.error('Fetch buzz error:', e); }
@@ -503,6 +510,10 @@ export const BuzzScreen = () => {
   // Tap a handle: find that student (same college only) and open their profile
   const openProfile = async (handle: string) => {
     if (!handle || handle === myHandle) return;
+    if (handle === 'Anonymous') {
+      Alert.alert('Anonymous', 'This student chose to stay anonymous.');
+      return;
+    }
     try {
       const token = await AsyncStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/social/search?q=${encodeURIComponent(handle)}`, {
@@ -521,7 +532,7 @@ export const BuzzScreen = () => {
   };
 
   const handleReact = async (postId: string, emoji: string) => {
-    setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, reactions: p.reactions.map(r => r.emoji === emoji ? { ...r, count: r.reacted ? r.count - 1 : r.count + 1, reacted: !r.reacted } : r) }));
+    setPosts((prev) => prev.map((p) => p.id !== postId ? p : { ...p, reactions: p.reactions.map((r) => r.emoji === emoji ? { ...r, count: r.reacted ? r.count - 1 : r.count + 1, reacted: !r.reacted } : r) }));
     try {
       const token = await AsyncStorage.getItem('token');
       await fetch(`${API_URL}/api/buzz/${postId}/react`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ emoji }) });
@@ -535,9 +546,9 @@ export const BuzzScreen = () => {
       const data = await response.json();
       if (response.ok && Array.isArray(data)) {
         const comments: Comment[] = data.map((c: any) => ({ id: c.id, author: c.author, text: c.text, createdAt: c.created_at }));
-        setPosts(prev => {
-          const updated = prev.map(p => p.id === postId ? { ...p, comments, comment_count: comments.length } : p);
-          const updatedPost = updated.find(p => p.id === postId);
+        setPosts((prev) => {
+          const updated = prev.map((p) => p.id === postId ? { ...p, comments, comment_count: comments.length } : p);
+          const updatedPost = updated.find((p) => p.id === postId);
           if (updatedPost) setCommentPost(updatedPost);
           return updated;
         });
@@ -554,9 +565,9 @@ export const BuzzScreen = () => {
       const data = await response.json();
       if (response.ok) {
         const newComment: Comment = { id: data.id, author: data.author, text: data.text, createdAt: data.created_at };
-        setPosts(prev => {
-          const updated = prev.map(p => p.id === postId ? { ...p, comments: [...p.comments, newComment], comment_count: (p.comment_count || 0) + 1 } : p);
-          const updatedPost = updated.find(p => p.id === postId);
+        setPosts((prev) => {
+          const updated = prev.map((p) => p.id === postId ? { ...p, comments: [...p.comments, newComment], comment_count: (p.comment_count || 0) + 1 } : p);
+          const updatedPost = updated.find((p) => p.id === postId);
           if (updatedPost) setCommentPost(updatedPost);
           return updated;
         });
@@ -564,12 +575,11 @@ export const BuzzScreen = () => {
     } catch (e) { Alert.alert('Error', 'Failed to add comment. Check your connection.'); }
   };
 
-  // The photo goes to Cloudinary first, because the server only accepts https links
-  const handleCreatePost = async (content: string, category: PostCategory, image?: string): Promise<boolean> => {
+  // The photo or video goes to Cloudinary first, because the server only accepts https links
+  const handleCreatePost = async (content: string, category: PostCategory, media: PickedMedia | null): Promise<boolean> => {
     try {
       const token = await AsyncStorage.getItem('token');
-      let imageUrl: string | null = null;
-      if (image) imageUrl = (await uploadLocalImage(image)).url;
+      const imageUrl = media ? await uploadMedia(media) : null;
       const response = await fetch(`${API_URL}/api/buzz`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -589,13 +599,13 @@ export const BuzzScreen = () => {
     try {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/buzz/${postId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-      if (response.ok) { setPosts(prev => prev.filter(p => p.id !== postId)); }
+      if (response.ok) { setPosts((prev) => prev.filter((p) => p.id !== postId)); }
       else { const data = await response.json(); Alert.alert('Error', data.error || 'Failed to delete post'); }
     } catch (e) { Alert.alert('Error', 'Failed to delete post. Check your connection.'); }
   };
 
   const handleSavePost = async (postId: string) => {
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, saved: !p.saved } : p));
+    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, saved: !p.saved } : p));
     try {
       const token = await AsyncStorage.getItem('token');
       await fetch(`${API_URL}/api/buzz/${postId}/save`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
@@ -630,7 +640,7 @@ export const BuzzScreen = () => {
           <Text style={styles.postBtnText}>Post</Text>
         </TouchableOpacity>
       </View>
-      <FlatList data={CATEGORIES} horizontal showsHorizontalScrollIndicator={false} keyExtractor={i => i} contentContainerStyle={styles.categoriesContent} style={styles.categoriesRow}
+      <FlatList data={CATEGORIES} horizontal showsHorizontalScrollIndicator={false} keyExtractor={(i) => i} contentContainerStyle={styles.categoriesContent} style={styles.categoriesRow}
         renderItem={({ item }) => (
           <TouchableOpacity style={[styles.pill, activeCategory === item && styles.pillActive]} onPress={() => setActiveCategory(item as PostCategory)}>
             <Text style={[styles.pillText, activeCategory === item && styles.pillTextActive]}>{item}</Text>
@@ -642,7 +652,7 @@ export const BuzzScreen = () => {
       ) : (
         <FlatList
           data={posts}
-          keyExtractor={p => p.id}
+          keyExtractor={(p) => p.id}
           contentContainerStyle={styles.feed}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.accent} />}
@@ -655,7 +665,6 @@ export const BuzzScreen = () => {
               onReact={handleReact}
               onComment={handleOpenComments}
               onDelete={handleDeletePost}
-              onImagePress={setViewerImage}
               onSave={handleSavePost}
               onOpenProfile={openProfile}
             />
@@ -666,7 +675,7 @@ export const BuzzScreen = () => {
       )}
       <CommentSheet post={commentPost} visible={!!commentPost} onClose={() => setCommentPost(null)} onAddComment={handleAddComment} onOpenProfile={openProfileFromSheet} />
       <CreatePostSheet visible={createVisible} onClose={() => setCreateVisible(false)} onPost={handleCreatePost} />
-      <ImageViewerModal visible={!!viewerImage} uri={viewerImage} onClose={() => setViewerImage(null)} />
     </View>
   );
 };
+// END OF FILE
