@@ -1,8 +1,9 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { readPhoto } from '../../utils/cloudinary';
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Image, ActivityIndicator, Alert, SafeAreaView,
+  StyleSheet, Image, ActivityIndicator, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -157,7 +158,7 @@ export const CreateListingScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backText}>←</Text>
