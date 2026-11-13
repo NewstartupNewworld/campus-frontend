@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, Image, ScrollView, TouchableOpacity,
-  StyleSheet, Dimensions, ActivityIndicator, SafeAreaView,
+  StyleSheet, Dimensions, ActivityIndicator,
   Modal, TextInput, Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -10,6 +10,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 import { requestChat, Listing } from '../../api/listings';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ImageViewer from '../../components/ImageViewer';
+import { thumb } from '../../utils/img';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
 const { width } = Dimensions.get('window');
@@ -39,6 +42,7 @@ export const ListingDetailScreen = () => {
 
   const [listing, setListing] = useState<any>(initialListing);
   const [activeImage, setActiveImage] = useState(0);
+  const [viewing, setViewing] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [markingSold, setMarkingSold] = useState(false);
@@ -138,7 +142,7 @@ export const ListingDetailScreen = () => {
     try {
       const { chatId } = await requestChat(listing.id);
       navigation.navigate('ChatRoom', { chatId, listingTitle: listing.title });
-    } catch (err) { console.error('Chat request failed:', err); }
+    } catch (err: any) { Alert.alert('Could not start chat', err?.message ?? 'Check your internet and try again.'); }
     finally { setLoading(false); }
   };
 
@@ -191,7 +195,7 @@ export const ListingDetailScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Image carousel */}
@@ -199,7 +203,9 @@ export const ListingDetailScreen = () => {
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={e => setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width))}>
             {listing.images.map((uri: string, i: number) => (
-              <Image key={i} source={{ uri }} style={styles.image} resizeMode="cover" />
+              <TouchableOpacity key={i} activeOpacity={0.95} onPress={() => setViewing(uri)} accessibilityRole="imagebutton" accessibilityLabel={`Open photo ${i + 1}`}>
+                <Image source={{ uri: thumb(uri, 1000) }} style={styles.image} resizeMode="cover" />
+              </TouchableOpacity>
             ))}
           </ScrollView>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -298,6 +304,8 @@ export const ListingDetailScreen = () => {
           {!isSold && <Text style={styles.ctaNote}>A private chat request will be sent to the seller</Text>}
         </View>
       )}
+
+      <ImageViewer uri={viewing} onClose={() => setViewing(null)} />
 
       {/* Edit modal */}
       <Modal visible={editVisible} animationType="slide" transparent onRequestClose={() => setEditVisible(false)}>

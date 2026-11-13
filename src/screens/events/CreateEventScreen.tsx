@@ -9,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../theme/ThemeProvider';
 import { useKeyboardPadding } from '../../utils/useKeyboardPadding';
+import MediaPicker from '../../components/MediaPicker';
+import { uploadMedia, PickedMedia } from '../../utils/media';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 const EVENT_TYPES = ['Hackathon', 'Workshop', 'Seminar', 'Cultural', 'Sports', 'Event'];
@@ -66,6 +68,7 @@ export default function CreateEventScreen({ navigation }: any) {
   const [skillsText, setSkillsText] = useState('');
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [media, setMedia] = useState<PickedMedia | null>(null);
 
   const createEvent = async () => {
     if (!title.trim() || !startDate) {
@@ -85,7 +88,7 @@ export default function CreateEventScreen({ navigation }: any) {
           title: title.trim(), description, eventType, location,
           startDate: toApi(startDate),
           endDate: endDate ? toApi(endDate) : null,
-          registrationLink, prizePool, teamSize, skills, isOnline,
+          registrationLink, prizePool, teamSize, skills, isOnline, imageUrl: media ? await uploadMedia(media) : null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -252,6 +255,9 @@ export default function CreateEventScreen({ navigation }: any) {
             autoCapitalize="none" autoCorrect={false} keyboardType="url"
             style={[inputStyle, { marginBottom: 24 }]}
           />
+
+          <Text style={labelStyle}>POSTER (OPTIONAL)</Text>
+          <MediaPicker media={media} onChange={setMedia} disabled={loading} />
 
           {/* Submit */}
           <TouchableOpacity onPress={createEvent} disabled={loading}

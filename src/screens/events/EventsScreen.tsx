@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StatusBar, RefreshControl,
+  ActivityIndicator, StatusBar, RefreshControl, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
+import { thumb } from '../../utils/img';
+import { isVideoUrl } from '../../utils/media';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
@@ -38,6 +40,7 @@ type Event = {
   interested_count: number;
   is_interested: boolean;
   creator_handle: string;
+  image_url?: string | null;
   college: string;
 };
 
@@ -222,6 +225,16 @@ export default function EventsScreen({ navigation }: any) {
 
               {/* Top color bar */}
               <View style={{ height: 4, backgroundColor: config.color }} />
+
+              {event.image_url ? (
+                isVideoUrl(event.image_url) ? (
+                  <View style={{ height: 120, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="play-circle" size={44} color="#fff" />
+                  </View>
+                ) : (
+                  <Image source={{ uri: thumb(event.image_url, 700) }} style={{ width: '100%', height: 150, backgroundColor: colors.cardAlt }} resizeMode="cover" />
+                )
+              ) : null}
 
               <View style={{ padding: 16 }}>
                 {/* Type + Days left */}

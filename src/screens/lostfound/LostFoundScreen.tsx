@@ -62,6 +62,7 @@ export default function LostFoundScreen({ navigation }: any) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [activeType, setActiveType] = useState<'all' | 'lost' | 'found'>('all');
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
@@ -93,9 +94,11 @@ export default function LostFoundScreen({ navigation }: any) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Could not load');
       setItems(data.items ?? []);
+      setFailed(false);
     } catch {
-      // Keep what is on screen
+      setFailed(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -112,11 +115,16 @@ export default function LostFoundScreen({ navigation }: any) {
       {
         text: 'Yes',
         onPress: async () => {
-          const token = await getToken();
-          await fetch(`${BASE_URL}/api/lost-found/${id}/resolve`, {
-            method: 'POST', headers: { Authorization: `Bearer ${token}` },
-          });
-          fetchItems();
+          try {
+            const token = await getToken();
+            const res = await fetch(`${BASE_URL}/api/lost-found/${id}/resolve`, {
+              method: 'POST', headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error('failed');
+            fetchItems();
+          } catch {
+            Alert.alert('Could not update', 'Please check your internet and try again.');
+          }
         },
       },
     ]);
@@ -225,6 +233,18 @@ export default function LostFoundScreen({ navigation }: any) {
       >
         {loading ? (
           <ActivityIndicator color="#F97316" size="large" style={{ marginTop: 40 }} />
+        ) : failed && items.length === 0 ? (
+          <View style={{ alignItems: 'center', paddingTop: 40, gap: 8 }}>
+            <Ionicons name="cloud-offline-outline" size={40} color={colors.textDim} />
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>Could not load the items</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center' }}>Check your internet and try again.</Text>
+            <TouchableOpacity
+              onPress={() => { setLoading(true); fetchItems(); }}
+              style={{ marginTop: 8, backgroundColor: '#F97316', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : items.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 40 }}>
             <Ionicons name="search-outline" size={48} color={colors.textDim} style={{ marginBottom: 12 }} />
@@ -320,3 +340,4 @@ export default function LostFoundScreen({ navigation }: any) {
     </View>
   );
 }
+// END OF FILE

@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '../../theme/ThemeProvider';
 import EngageBar from '../../components/EngageBar';
+import MediaView from '../../components/MediaView';
 
 const BASE_URL = 'https://campus-backend-arfy.onrender.com';
 
@@ -107,6 +108,8 @@ export default function EventDetailScreen({ route, navigation }: any) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
+
+        {event.image_url ? <View style={{ marginBottom: 16 }}><MediaView uri={event.image_url} height={220} /></View> : null}
 
         {/* Color banner */}
         <View style={{ height: 6, backgroundColor: config.color, borderRadius: 4, marginBottom: 20 }} />
