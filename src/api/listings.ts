@@ -1,4 +1,5 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Replace with your actual backend URL
 const BASE_URL = 'https://campus-backend-arfy.onrender.com/api';
@@ -11,8 +12,8 @@ const api = axios.create({
 // Attach JWT token to every request
 api.interceptors.request.use(async (config) => {
   // Import your auth storage here, e.g. SecureStore
-  // const token = await SecureStore.getItemAsync('token');
-  // if (token) config.headers.Authorization = `Bearer ${token}`;
+  const token = await AsyncStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 

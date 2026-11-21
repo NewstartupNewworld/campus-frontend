@@ -23,6 +23,7 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { CollegeAccessScreen } from '../screens/profile/CollegeAccessScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
 import VerificationScreen from '../screens/profile/VerificationScreen';
+import SettingsScreen from '../screens/profile/SettingsScreen';
 import UserSearchScreen from '../screens/social/UserSearchScreen';
 import PublicProfileScreen from '../screens/social/PublicProfileScreen';
 
@@ -125,7 +126,7 @@ function ProfileStackScreen() {
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="CollegeAccess" component={CollegeAccessScreen} />
       <ProfileStack.Screen name="Notifications" component={NotificationsScreen} />
-      <ProfileStack.Screen name="Verification" component={VerificationScreen} />
+      <ProfileStack.Screen name="Verification" component={VerificationScreen} /><ProfileStack.Screen name="Settings" component={SettingsScreen} />
     </ProfileStack.Navigator>
   );
 }

@@ -21,15 +21,17 @@ type Entry = {
 };
 
 const LEVELS: { key: string; label: string }[] = [
-  { key: 'school', label: 'School (10th)' },
-  { key: 'senior_secondary', label: 'Class 12' },
-  { key: 'bachelor', label: "Bachelor's" },
-  { key: 'master', label: "Master's" },
+  { key: 'primary', label: 'Primary school' },
+  { key: 'secondary', label: 'Secondary (Class 10)' },
+  { key: 'senior_secondary', label: 'Higher secondary (Class 12)' },
+  { key: 'diploma', label: 'Diploma / ITI' },
+  { key: 'bachelor', label: "UG (Bachelor's)" },
+  { key: 'master', label: "PG (Master's)" },
   { key: 'phd', label: 'PhD' },
   { key: 'professional', label: 'Professional' },
   { key: 'other', label: 'Other' },
 ];
-const levelLabel = (key: string) => LEVELS.find((l) => l.key === key)?.label ?? 'Other';
+const levelLabel = (key: string) => LEVELS.find((l) => l.key === key)?.label ?? (key === 'school' ? 'School' : 'Other');
 
 const STATUS: Record<Entry['status'], { label: string; color: string }> = {
   approved: { label: 'Approved', color: '#22C55E' },
@@ -253,8 +255,8 @@ export default function MyCollegesRow({ onChanged }: { onChanged?: () => void })
                 </TouchableOpacity>
               ) : (
                 <View style={{ marginTop: 6 }}>
-                  <Text style={label}>College name</Text>
-                  <TextInput value={name} onChangeText={setName} placeholder="e.g. IIT Bombay" placeholderTextColor={colors.textDim} maxLength={255} style={input} />
+                  <Text style={label}>School or college name</Text>
+                  <TextInput value={name} onChangeText={setName} placeholder="e.g. Delhi Public School, IIT Bombay" placeholderTextColor={colors.textDim} maxLength={255} style={input} />
 
                   <Text style={label}>What did you study there?</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

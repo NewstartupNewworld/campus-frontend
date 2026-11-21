@@ -31,6 +31,8 @@ function CommentsModal({
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
+  const [anon, setAnon] = useState(false);
+  const forcedAnon = targetType === 'confession';
   const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
@@ -65,7 +67,7 @@ function CommentsModal({
       const res = await fetch(`${API_URL}/api/engage/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ type: targetType, id: targetId, text: body }),
+        body: JSON.stringify({ type: targetType, id: targetId, text: body, anonymous: forcedAnon || anon }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not post');
@@ -167,6 +169,11 @@ function CommentsModal({
           )}
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
+            {forcedAnon ? null : (
+              <TouchableOpacity onPress={() => setAnon(!anon)} accessibilityRole="button" accessibilityLabel={anon ? 'Comment anonymously: on' : 'Comment anonymously: off'} style={{ width: 44, height: 46, borderRadius: 23, backgroundColor: anon ? colors.accent + '33' : colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={anon ? 'eye-off' : 'eye-outline'} size={20} color={anon ? colors.accent : colors.textMuted} />
+              </TouchableOpacity>
+            )}
             <TextInput
               value={text}
               onChangeText={setText}

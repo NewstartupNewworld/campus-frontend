@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, RefreshControl, Image,
-  Modal, Alert, ActivityIndicator, Animated,
+  Modal, Alert, ActivityIndicator, Animated, Switch,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,7 +19,7 @@ type PostCategory = 'All' | 'Meme' | 'Event' | 'Food' | 'Lost & Found' | 'Rant' 
 
 interface Comment { id: string; author: string; text: string; createdAt: string; }
 interface BuzzPost {
-  id: string; author: string; category: PostCategory; content: string; image?: string;
+  id: string; author: string; authorId?: string; anonymous?: boolean; category: PostCategory; content: string; image?: string;
   reactions: { emoji: string; count: number; reacted: boolean }[];
   comments: Comment[]; comment_count?: number; createdAt: string; trending: boolean; saved?: boolean; isOwner?: boolean;
 }
@@ -119,13 +119,14 @@ const StoriesRow = ({ posts, onOpenProfile }: { posts: BuzzPost[]; onOpenProfile
 
 const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
   post: BuzzPost | null; visible: boolean; onClose: () => void;
-  onAddComment: (postId: string, text: string) => void;
+  onAddComment: (postId: string, text: string, anonymous: boolean) => void;
   onOpenProfile: (handle: string) => void;
 }) => {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
   const { rootRef, onLayout, pad } = useKeyboardPadding({ modal: true });
   const [text, setText] = useState('');
+  const [anon, setAnon] = useState(false);
 
   const cs = StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end' },
@@ -151,7 +152,7 @@ const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
   });
 
   if (!post) return null;
-  const handleSend = () => { if (!text.trim()) return; onAddComment(post.id, text.trim()); setText(''); };
+  const handleSend = () => { if (!text.trim()) return; onAddComment(post.id, text.trim(), anon); setText(''); };
 
   return (
     <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onClose}>
@@ -178,6 +179,9 @@ const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
             )}
           />
           <View style={cs.inputRow}>
+            <TouchableOpacity onPress={() => setAnon(!anon)} accessibilityRole="button" accessibilityLabel={anon ? 'Comment anonymously: on' : 'Comment anonymously: off'} style={{ width: 44, height: 46, borderRadius: 23, backgroundColor: anon ? Colors.accent + '33' : Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={anon ? 'eye-off' : 'eye-outline'} size={20} color={anon ? Colors.accent : Colors.textMuted} />
+            </TouchableOpacity>
             <TextInput style={cs.input} value={text} onChangeText={setText} placeholder="Add a comment..." placeholderTextColor={Colors.textDim} multiline maxLength={300} />
             <TouchableOpacity style={[cs.sendBtn, !text.trim() && cs.sendBtnOff]} onPress={handleSend} disabled={!text.trim()} accessibilityRole="button" accessibilityLabel="Send comment">
               <Ionicons name="send" size={18} color="#fff" />
@@ -329,7 +333,7 @@ const PostCard = ({ post, onReact, onComment, onDelete, onSave, onOpenProfile }:
 
 const CreatePostSheet = ({ visible, onClose, onPost }: {
   visible: boolean; onClose: () => void;
-  onPost: (content: string, category: PostCategory, media: PickedMedia | null) => Promise<boolean>;
+  onPost: (content: string, category: PostCategory, media: PickedMedia | null, anonymous: boolean) => Promise<boolean>;
 }) => {
   const Colors = useColors();
   const insets = useSafeAreaInsets();
@@ -337,6 +341,7 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<PostCategory>('Meme');
   const [media, setMedia] = useState<PickedMedia | null>(null);
+  const [anonymous, setAnonymous] = useState(false);
   const [posting, setPosting] = useState(false);
 
   const cps = StyleSheet.create({
@@ -375,10 +380,10 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
   const handlePost = async () => {
     if (!content.trim() || posting) return;
     setPosting(true);
-    const ok = await onPost(content.trim(), category, media);
+    const ok = await onPost(content.trim(), category, media, anonymous);
     setPosting(false);
     if (ok) {
-      setContent(''); setCategory('Meme'); setMedia(null);
+      setContent(''); setCategory('Meme'); setMedia(null); setAnonymous(false);
       onClose();
     }
   };
@@ -415,6 +420,13 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
               </TouchableOpacity>
             </View>
           ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.bg, borderRadius: 14, padding: 12, marginBottom: 10 }}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={{ color: Colors.text, fontWeight: '700', fontSize: 13.5 }}>Post anonymously</Text>
+              <Text style={{ color: Colors.textMuted, fontSize: 11.5, marginTop: 2 }}>{anonymous ? 'Others see only your anonymous handle' : 'Others see your name'}</Text>
+            </View>
+            <Switch value={anonymous} onValueChange={setAnonymous} trackColor={{ false: Colors.border, true: Colors.accent + '88' }} thumbColor={anonymous ? Colors.accent : Colors.textMuted} accessibilityLabel="Post anonymously" />
+          </View>
           <View style={cps.mediaRow}>
             <TouchableOpacity style={cps.mediaBtn} onPress={() => choose('camera')} disabled={posting} accessibilityRole="button">
               <Ionicons name="camera-outline" size={18} color={Colors.text} />
@@ -488,7 +500,7 @@ export const BuzzScreen = () => {
         const mapped: BuzzPost[] = data.posts.map((p: any) => {
           const summary: any[] = Array.isArray(p.reaction_summary) ? p.reaction_summary : [];
           return {
-            id: p.id, author: p.author, category: p.category, content: p.content,
+            id: p.id, author: p.author, authorId: p.author_id || undefined, anonymous: !!p.is_anonymous, category: p.category, content: p.content,
             image: p.image_url || undefined,
             reactions: DEFAULT_REACTIONS.map((r) => {
               const hit = summary.find((x) => x.emoji === r.emoji);
@@ -510,6 +522,12 @@ export const BuzzScreen = () => {
   // Tap a handle: find that student (same college only) and open their profile
   const openProfile = async (handle: string) => {
     if (!handle || handle === myHandle) return;
+    const known = posts.find((p) => p.author === handle && p.authorId);
+    if (known?.authorId) { navigation.navigate('PublicProfile', { userId: known.authorId }); return; }
+    if (posts.some((p) => p.author === handle && p.anonymous)) {
+      Alert.alert('Posted anonymously', 'This student chose to post without a name.');
+      return;
+    }
     if (handle === 'Anonymous') {
       Alert.alert('Anonymous', 'This student chose to stay anonymous.');
       return;
@@ -558,10 +576,10 @@ export const BuzzScreen = () => {
 
   const handleOpenComments = (post: BuzzPost) => { setCommentPost(post); fetchComments(post.id); };
 
-  const handleAddComment = async (postId: string, text: string) => {
+  const handleAddComment = async (postId: string, text: string, anonymous: boolean) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/buzz/${postId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ text }) });
+      const response = await fetch(`${API_URL}/api/buzz/${postId}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ text, anonymous }) });
       const data = await response.json();
       if (response.ok) {
         const newComment: Comment = { id: data.id, author: data.author, text: data.text, createdAt: data.created_at };
@@ -576,14 +594,14 @@ export const BuzzScreen = () => {
   };
 
   // The photo or video goes to Cloudinary first, because the server only accepts https links
-  const handleCreatePost = async (content: string, category: PostCategory, media: PickedMedia | null): Promise<boolean> => {
+  const handleCreatePost = async (content: string, category: PostCategory, media: PickedMedia | null, anonymous: boolean): Promise<boolean> => {
     try {
       const token = await AsyncStorage.getItem('token');
       const imageUrl = media ? await uploadMedia(media) : null;
       const response = await fetch(`${API_URL}/api/buzz`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content, category, imageUrl }),
+        body: JSON.stringify({ content, category, imageUrl, anonymous }),
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok) { fetchPosts(activeCategory, 1, false); return true; }

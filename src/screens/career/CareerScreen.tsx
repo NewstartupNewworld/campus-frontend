@@ -24,6 +24,11 @@ const FEATURES: { id: string; icon: IconName; title: string; subtitle: string; s
     subtitle: 'Build and improve your resume with AI help',
     screen: 'ResumeAI', color: '#7C5CFF', bg: '#7C5CFF22',
   },
+  {
+    id: 'coach', icon: 'rocket', title: 'AI Coach',
+    subtitle: 'Interviews, company prep, resume roast and JD match',
+    screen: 'AICoach', color: '#F59E0B', bg: '#F59E0B22',
+  },
 ];
 
 export default function CareerScreen() {

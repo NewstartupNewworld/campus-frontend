@@ -34,6 +34,11 @@ const FEATURES: { id: string; icon: IconName; title: string; subtitle: string; s
     subtitle: 'Connect with seniors for mentorship and advice',
     screen: 'SeniorGuide', color: '#EF4444', bg: '#EF444422',
   },
+  {
+    id: 'coach', icon: 'rocket', title: 'AI Coach',
+    subtitle: 'Mock interviews, tests, resume and more for your own field',
+    screen: 'AICoach', color: '#F59E0B', bg: '#F59E0B22',
+  },
 ];
 
 const QUICK_TIPS: { icon: IconName; text: string }[] = [
@@ -98,7 +103,7 @@ export default function AcademicScreen() {
         </View>
 
         <Text style={{ color: colors.textDim, fontSize: 11, textAlign: 'center', marginTop: 28, paddingHorizontal: 40, lineHeight: 16 }}>
-          Powered by Groq AI (Llama 3.3) · Results may vary · Always verify important information
+          Powered by Groq AI (Llama 3.3) · Results may vary · Always verify important information. AI answers are for study, not medical or legal advice.
         </Text>
 
       </ScrollView>

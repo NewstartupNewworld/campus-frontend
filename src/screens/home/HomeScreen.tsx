@@ -155,7 +155,7 @@ export const HomeScreen = () => {
           <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.username} numberOfLines={1}>
-              {user?.anonymous_handle || 'Welcome'}
+              {user?.student_name || user?.anonymous_handle || 'Welcome'}
             </Text>
           </View>
           <TouchableOpacity
@@ -231,6 +231,14 @@ export const HomeScreen = () => {
             <Text style={styles.tileSub}>Internships, gigs, resume AI</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity style={styles.botBar} activeOpacity={0.85} onPress={() => navigation.navigate('AICoach')} accessibilityRole="button">
+          <View style={styles.botIcon}>
+            <Ionicons name="rocket" size={18} color={Colors.accent} />
+          </View>
+          <Text style={styles.botText}>AI Coach: interviews, tests, resume</Text>
+          <Ionicons name="arrow-forward" size={18} color={Colors.textMuted} />
+        </TouchableOpacity>
 
         {/* CampusBot */}
         <TouchableOpacity
