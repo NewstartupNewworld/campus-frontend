@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
 
-export type ApiFailure = { ok: false; status: number; title: string; message: string; field?: string };
+export type ApiFailure = { ok: false; status: number; title: string; message: string; field?: string; serverMessage?: string };
 export type ApiResult<T = any> = { ok: true; data: T } | ApiFailure;
 
 // Turns an answer code into words a student understands
@@ -39,7 +39,7 @@ export async function apiRequest<T = any>(
     });
     const data = await response.json().catch(() => null);
     if (response.ok) return { ok: true, data: data as T };
-    return { ok: false, status: response.status, ...friendlyStatus(response.status, data?.error), field: data?.field ?? undefined };
+    return { ok: false, status: response.status, ...friendlyStatus(response.status, data?.error), field: data?.field ?? undefined, serverMessage: typeof data?.error === 'string' ? data.error : undefined };
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       return { ok: false, status: 0, title: 'Taking too long', message: 'The server is slow right now. Please try again in a moment.' };

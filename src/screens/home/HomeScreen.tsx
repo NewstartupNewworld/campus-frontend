@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
+import CampusHero from '../../components/CampusHero';
+import { prettyCollege } from '../../utils/format';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -181,19 +183,8 @@ export const HomeScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Hero */}
-        <View style={styles.hero}>
-          <View style={styles.heroPill}>
-            <Ionicons name="location" size={12} color="#FFFFFF" />
-            <Text style={styles.heroPillText}>YOUR CAMPUS</Text>
-          </View>
-          <Text style={styles.heroCollege} numberOfLines={2}>
-            {user?.college || 'Campus Connect'}
-          </Text>
-          <Text style={styles.heroSub}>
-            Marketplace, events, study help and safety for your campus.
-          </Text>
-        </View>
+        {/* Hero: the college photo from the profile cover */}
+        <CampusHero college={user?.college} />
 
         {failed && (
           <View style={styles.failedCard}>

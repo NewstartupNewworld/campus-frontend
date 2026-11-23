@@ -12,6 +12,7 @@ import EditProfileRow from './EditProfileRow';
 import MyCollegesRow from './MyCollegesRow';
 import MessagesRow from './MessagesRow';
 import BlockedRow from './BlockedRow';
+import AnonPostingRow from './AnonPostingRow';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -85,7 +86,7 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="How you use CampusConnect">
-          <MessagesRow />
+          <MessagesRow /><AnonPostingRow />
           <View style={styles.settingsCard}>
             <Row icon="notifications" color={Colors.accent} label="Notifications" sub="Likes, comments, chats and alerts" onPress={() => navigation.navigate('Notifications')} />
             <View style={styles.divider} />

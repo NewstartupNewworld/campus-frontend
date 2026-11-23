@@ -1,3 +1,4 @@
+import { useAnonymousChoice } from '../utils/anonPref';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, FlatList, TextInput, ActivityIndicator, Alert,
@@ -31,7 +32,7 @@ function CommentsModal({
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
-  const [anon, setAnon] = useState(false);
+  const [anon, setAnon] = useAnonymousChoice();
   const forcedAnon = targetType === 'confession';
   const [sending, setSending] = useState(false);
 

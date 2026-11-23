@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../theme/ThemeProvider';
+import { prettyCollege } from '../../utils/format';
 import { ProfileHero, HeroButton, HeroPill, EducationSection } from '../profile/ProfileExtras';
 
 const API_URL = 'https://campus-backend-arfy.onrender.com';
@@ -150,7 +151,7 @@ export default function PublicProfileScreen() {
           userId={user.id}
           handle={user.anonymous_handle}
           name={user.student_name || undefined}
-          college={user.college}
+          college={prettyCollege(user.college)}
           meta={meta}
           verified={user.verified}
           joined={joined}

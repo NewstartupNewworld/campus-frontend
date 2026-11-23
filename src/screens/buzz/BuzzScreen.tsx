@@ -1,3 +1,4 @@
+import { useAnonymousChoice } from '../../utils/anonPref';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, RefreshControl, Image,
@@ -126,7 +127,7 @@ const CommentSheet = ({ post, visible, onClose, onAddComment, onOpenProfile }: {
   const insets = useSafeAreaInsets();
   const { rootRef, onLayout, pad } = useKeyboardPadding({ modal: true });
   const [text, setText] = useState('');
-  const [anon, setAnon] = useState(false);
+  const [anon, setAnon] = useAnonymousChoice();
 
   const cs = StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end' },
@@ -341,7 +342,7 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<PostCategory>('Meme');
   const [media, setMedia] = useState<PickedMedia | null>(null);
-  const [anonymous, setAnonymous] = useState(false);
+  const [anonymous, setAnonymous, resetAnonymous] = useAnonymousChoice();
   const [posting, setPosting] = useState(false);
 
   const cps = StyleSheet.create({
@@ -383,7 +384,7 @@ const CreatePostSheet = ({ visible, onClose, onPost }: {
     const ok = await onPost(content.trim(), category, media, anonymous);
     setPosting(false);
     if (ok) {
-      setContent(''); setCategory('Meme'); setMedia(null); setAnonymous(false);
+      setContent(''); setCategory('Meme'); setMedia(null); resetAnonymous();
       onClose();
     }
   };

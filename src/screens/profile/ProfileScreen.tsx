@@ -1,3 +1,4 @@
+import AnonPostingRow from './AnonPostingRow';
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, RefreshControl,
@@ -8,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../theme/ThemeProvider';
 import { thumb } from '../../utils/img';
+import { prettyCollege } from '../../utils/format';
 import { confirmLogout } from '../../utils/session';
 import { ProfileHero, HeroButton, HeroPill } from './ProfileExtras';
 
@@ -167,7 +169,7 @@ export const ProfileScreen = () => {
           handle={profile.handle}
           name={studentName}
           showHandle
-          college={profile.college}
+          college={prettyCollege(profile.college)}
           meta={meta}
           verified={profile.verified}
           joined={joined}
@@ -207,6 +209,8 @@ export const ProfileScreen = () => {
             <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
           </TouchableOpacity>
         ) : null}
+
+        <View style={{ marginHorizontal: 16, marginTop: 14 }}><AnonPostingRow /></View>
 
         {/* Trust score */}
         <View style={styles.card}>

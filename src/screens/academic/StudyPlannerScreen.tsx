@@ -1,223 +1,128 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, StatusBar, SafeAreaView,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/ThemeProvider';
+import { Page, Header, Label, Chips, Button, Card, ErrorCard, Note, UiError, inputBox, useField, aiPost } from '../../components/AiBits';
 
-const BASE_URL = 'https://campus-backend-arfy.onrender.com';
-const COMMON_SUBJECTS = ['Maths', 'Physics', 'DSA', 'OS', 'DBMS', 'CN', 'Algorithms', 'Chemistry'];
+const HOURS = ['3', '4', '5', '6', '8', '10'];
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const toApi = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const toShow = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
-export default function StudyPlannerScreen({ navigation }: any) {
+export default function StudyPlannerScreen() {
   const colors = useColors();
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [customSubject, setCustomSubject] = useState('');
-  const [examDate, setExamDate] = useState('');
-  const [hoursPerDay, setHoursPerDay] = useState('6');
-  const [weakTopics, setWeakTopics] = useState('');
+  const f = useField();
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [extra, setExtra] = useState<string[]>([]);
+  const [custom, setCustom] = useState('');
+  const [examDate, setExamDate] = useState<Date | null>(null);
+  const [hours, setHours] = useState('6');
+  const [weak, setWeak] = useState('');
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
   const [daysLeft, setDaysLeft] = useState(0);
+  const [error, setError] = useState<UiError | null>(null);
 
-  const toggleSubject = (s: string) => {
-    setSubjects(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  const options = Array.from(new Set([...f.subjects, ...extra]));
+
+  const addCustom = () => {
+    const name = custom.trim();
+    if (name.length < 2) return;
+    if (!options.includes(name)) setExtra((e) => [...e, name]);
+    setChosen((c) => (c.includes(name) ? c : [...c, name]));
+    setCustom('');
   };
 
-  const addCustomSubject = () => {
-    if (customSubject.trim() && !subjects.includes(customSubject.trim())) {
-      setSubjects(prev => [...prev, customSubject.trim()]);
-      setCustomSubject('');
-    }
+  const pickDate = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    DateTimePickerAndroid.open({
+      value: examDate ?? new Date(today.getTime() + 14 * 86400000),
+      mode: 'date',
+      minimumDate: today,
+      onChange: (e, date) => { if (e.type === 'set' && date) setExamDate(date); },
+    });
   };
 
-  const generatePlan = async () => {
-    if (!subjects.length) return Alert.alert('Add subjects', 'Please select at least one subject');
-    if (!examDate) return Alert.alert('Set exam date', 'Please enter your exam date (YYYY-MM-DD)');
-    try {
-      setLoading(true);
-      setPlan(null);
-      const token = await AsyncStorage.getItem('token');
-      const weakArr = weakTopics.split(',').map(t => t.trim()).filter(Boolean);
-      const res = await fetch(`${BASE_URL}/api/ai/study-plan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          subjects, examDate,
-          hoursPerDay: parseInt(hoursPerDay) || 6,
-          weakTopics: weakArr,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setPlan(data.plan);
-      setDaysLeft(data.daysLeft);
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to generate plan');
-    } finally {
-      setLoading(false);
-    }
+  const generate = async () => {
+    if (loading) return;
+    if (chosen.length === 0) { setError({ title: 'Choose subjects', message: 'Select at least one subject.' }); return; }
+    if (!examDate) { setError({ title: 'Choose the exam date', message: 'Tap the date box and pick the date of your exam.' }); return; }
+    setLoading(true); setError(null); setPlan(null);
+    const r = await aiPost<{ plan: any; daysLeft: number }>('/api/ai/study-plan', {
+      subjects: chosen, examDate: toApi(examDate), hoursPerDay: parseInt(hours, 10) || 6,
+      weakTopics: weak.split(',').map((t) => t.trim()).filter(Boolean),
+    });
+    setLoading(false);
+    if (!r.ok) { setError(r); return; }
+    setPlan(r.data.plan);
+    setDaysLeft(r.data.daysLeft);
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16, gap: 12 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}
-          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: colors.text, fontSize: 18 }}>‹</Text>
-        </TouchableOpacity>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>📅 Study Planner</Text>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-
-        {/* Subjects */}
-        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-          SELECT SUBJECTS
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          {COMMON_SUBJECTS.map(s => (
-            <TouchableOpacity key={s} onPress={() => toggleSubject(s)}
-              style={{
-                paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-                backgroundColor: subjects.includes(s) ? '#F97316' : colors.card,
-                borderWidth: 0.5, borderColor: subjects.includes(s) ? '#F97316' : colors.border,
-              }}>
-              <Text style={{ color: subjects.includes(s) ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '500' }}>{s}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Custom subject */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-          <TextInput
-            value={customSubject} onChangeText={setCustomSubject}
-            placeholder="Add custom subject..."
-            placeholderTextColor={colors.textDim}
-            onSubmitEditing={addCustomSubject}
-            style={{ flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 12, color: colors.text, fontSize: 14 }}
-          />
-          <TouchableOpacity onPress={addCustomSubject}
-            style={{ backgroundColor: '#F97316', borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 20 }}>+</Text>
+    <Page>
+      <Header title="Study Planner" subtitle={`Made for ${f.label}`} />
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        <Label>Subjects</Label>
+        <Chips options={options} value={chosen} onChange={setChosen} color="#F97316" onAdd={f.addYours} />
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+          <TextInput value={custom} onChangeText={setCustom} placeholder="Or type a subject for this plan" placeholderTextColor={colors.textDim} maxLength={60} onSubmitEditing={addCustom} returnKeyType="done" style={{ ...inputBox(colors), flex: 1 }} />
+          <TouchableOpacity onPress={addCustom} accessibilityRole="button" accessibilityLabel="Add subject" style={{ width: 48, borderRadius: 12, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="add" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        {/* Selected subjects display */}
-        {subjects.length > 0 && (
-          <View style={{ backgroundColor: '#F9731615', borderRadius: 12, padding: 12, marginBottom: 20 }}>
-            <Text style={{ color: '#F97316', fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-              Selected ({subjects.length}):
-            </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 13 }}>{subjects.join(' · ')}</Text>
-          </View>
-        )}
-
-        {/* Exam date */}
-        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-          EXAM DATE
-        </Text>
-        <TextInput
-          value={examDate} onChangeText={setExamDate}
-          placeholder="YYYY-MM-DD  e.g. 2026-07-20"
-          placeholderTextColor={colors.textDim}
-          style={{ backgroundColor: colors.card, borderRadius: 12, padding: 12, color: colors.text, fontSize: 14, marginBottom: 20 }}
-        />
-
-        {/* Hours per day */}
-        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-          STUDY HOURS PER DAY
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-          {['3', '4', '5', '6', '8', '10'].map(h => (
-            <TouchableOpacity key={h} onPress={() => setHoursPerDay(h)}
-              style={{
-                flex: 1, paddingVertical: 10, borderRadius: 12,
-                backgroundColor: hoursPerDay === h ? '#F97316' : colors.card,
-                borderWidth: 0.5, borderColor: hoursPerDay === h ? '#F97316' : colors.border,
-                alignItems: 'center',
-              }}>
-              <Text style={{ color: hoursPerDay === h ? '#fff' : colors.textMuted, fontSize: 14, fontWeight: '600' }}>{h}h</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Weak topics */}
-        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-          WEAK TOPICS (optional)
-        </Text>
-        <TextInput
-          value={weakTopics} onChangeText={setWeakTopics}
-          placeholder="e.g. Calculus, Graph Algorithms, Deadlocks"
-          placeholderTextColor={colors.textDim}
-          style={{ backgroundColor: colors.card, borderRadius: 12, padding: 12, color: colors.text, fontSize: 14, marginBottom: 24 }}
-        />
-
-        {/* Generate button */}
-        <TouchableOpacity onPress={generatePlan} disabled={loading}
-          style={{ backgroundColor: loading ? colors.cardAlt : '#F97316', borderRadius: 16, padding: 16, alignItems: 'center', marginBottom: 24 }}>
-          {loading ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Creating your plan...</Text>
-            </View>
-          ) : (
-            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>📅 Generate Study Plan</Text>
-          )}
+        <Label>Exam date</Label>
+        <TouchableOpacity onPress={pickDate} accessibilityRole="button" accessibilityLabel="Choose the exam date" style={{ ...inputBox(colors), flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Ionicons name="calendar-outline" size={18} color={examDate ? colors.text : colors.textDim} />
+          <Text style={{ color: examDate ? colors.text : colors.textDim, fontSize: 14 }}>{examDate ? toShow(examDate) : 'Tap to choose the date'}</Text>
         </TouchableOpacity>
 
-        {/* Plan output */}
-        {plan && !plan.raw && (
-          <View style={{ gap: 16 }}>
-            <View style={{ backgroundColor: '#F9731615', borderRadius: 16, padding: 16, borderLeftWidth: 3, borderLeftColor: '#F97316' }}>
-              <Text style={{ color: '#F97316', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>
-                📊 {daysLeft} days left · {plan.hoursPerDay}h/day
-              </Text>
+        <Label>Study hours per day</Label>
+        <Chips options={HOURS.map((h) => `${h}h`)} value={`${hours}h`} onChange={(v) => setHours(String(v).replace('h', ''))} color="#F97316" sticky />
+
+        <Label>Weak topics (optional, separate with commas)</Label>
+        <TextInput value={weak} onChangeText={setWeak} placeholder="Topics you find hard" placeholderTextColor={colors.textDim} maxLength={200} style={inputBox(colors)} />
+
+        <Button label="Create my study plan" onPress={generate} busy={loading} color="#F97316" />
+        <ErrorCard error={error} onRetry={error && chosen.length > 0 && examDate ? generate : undefined} />
+
+        {plan && !plan.raw ? (
+          <View style={{ gap: 14, marginTop: 20 }}>
+            <Card tint="#F97316">
+              <Text style={{ color: '#F97316', fontSize: 13, fontWeight: '800', marginBottom: 4 }}>{daysLeft} days left, {plan.hoursPerDay}h a day</Text>
               <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 20 }}>{plan.summary}</Text>
-            </View>
-
-            {plan.weeklyGoals?.length > 0 && (
-              <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16 }}>
-                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 10 }}>🎯 Weekly Goals</Text>
-                {plan.weeklyGoals.map((g: string, i: number) => (
-                  <Text key={i} style={{ color: colors.textMuted, fontSize: 13, lineHeight: 22 }}>• {g}</Text>
-                ))}
-              </View>
-            )}
-
-            <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>📆 Day-by-Day Plan</Text>
-            {plan.plan?.slice(0, 14).map((day: any) => (
-              <View key={day.day} style={{ backgroundColor: colors.card, borderRadius: 14, padding: 14 }}>
+            </Card>
+            {plan.weeklyGoals?.length > 0 ? (
+              <Card>
+                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 8 }}>Weekly goals</Text>
+                {plan.weeklyGoals.map((g: string, i: number) => <Text key={i} style={{ color: colors.textMuted, fontSize: 13, lineHeight: 22 }}>- {g}</Text>)}
+              </Card>
+            ) : null}
+            <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>Day by day</Text>
+            {plan.plan?.slice(0, 14).map((d: any) => (
+              <Card key={d.day}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>Day {day.day} — {day.focus}</Text>
-                  <Text style={{ color: '#F97316', fontSize: 12, fontWeight: '600' }}>{day.hours}h</Text>
+                  <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', flex: 1 }}>Day {d.day}: {d.focus}</Text>
+                  <Text style={{ color: '#F97316', fontSize: 12, fontWeight: '700' }}>{d.hours}h</Text>
                 </View>
-                <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 4 }}>{day.topics?.join(', ')}</Text>
-                {day.tip && <Text style={{ color: colors.textDim, fontSize: 12, fontStyle: 'italic' }}>💡 {day.tip}</Text>}
-              </View>
+                <Text style={{ color: colors.textMuted, fontSize: 13 }}>{d.topics?.join(', ')}</Text>
+                {d.tip ? <Text style={{ color: colors.textDim, fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>Tip: {d.tip}</Text> : null}
+              </Card>
             ))}
-
-            {plan.importantTips?.length > 0 && (
-              <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16 }}>
-                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 10 }}>💡 Important Tips</Text>
-                {plan.importantTips.map((t: string, i: number) => (
-                  <Text key={i} style={{ color: colors.textMuted, fontSize: 13, lineHeight: 22 }}>• {t}</Text>
-                ))}
-              </View>
-            )}
+            {plan.importantTips?.length > 0 ? (
+              <Card>
+                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 8 }}>Important tips</Text>
+                {plan.importantTips.map((t: string, i: number) => <Text key={i} style={{ color: colors.textMuted, fontSize: 13, lineHeight: 22 }}>- {t}</Text>)}
+              </Card>
+            ) : null}
           </View>
-        )}
-
-        {plan?.raw && (
-          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 14, lineHeight: 22 }}>{plan.raw}</Text>
-          </View>
-        )}
-
+        ) : null}
+        {plan?.raw ? <View style={{ marginTop: 20 }}><Card><Text selectable style={{ color: colors.textMuted, fontSize: 14, lineHeight: 22 }}>{plan.raw}</Text></Card></View> : null}
+        <Note />
       </ScrollView>
-    </SafeAreaView>
+    </Page>
   );
 }
+// END OF FILE

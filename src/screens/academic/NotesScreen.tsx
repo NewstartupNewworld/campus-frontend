@@ -1,150 +1,62 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, StatusBar, SafeAreaView,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Text, TextInput, ScrollView, Share, TouchableOpacity, View } from 'react-native';
 import { useColors } from '../../theme/ThemeProvider';
-
-const BASE_URL = 'https://campus-backend-arfy.onrender.com';
+import { Page, Header, Label, Chips, Button, Card, ErrorCard, Note, UiError, inputBox, useField, aiPost } from '../../components/AiBits';
 
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
 const STYLES = ['Concise', 'Detailed', 'Exam-focused'];
-const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'DSA', 'OS', 'DBMS', 'CN', 'Algorithms', 'Other'];
 
-export default function NotesScreen({ navigation }: any) {
+export default function NotesScreen() {
   const colors = useColors();
+  const f = useField();
   const [topic, setTopic] = useState('');
-  const [subject, setSubject] = useState('DSA');
+  const [subject, setSubject] = useState('');
   const [level, setLevel] = useState('Intermediate');
   const [style, setStyle] = useState('Exam-focused');
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
+  const [error, setError] = useState<UiError | null>(null);
 
-  const generateNotes = async () => {
-    if (!topic.trim()) return Alert.alert('Enter a topic', 'Please enter the topic you want notes for');
-    try {
-      setLoading(true);
-      setNotes('');
-      const token = await AsyncStorage.getItem('token');
-      const res = await fetch(`${BASE_URL}/api/ai/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          topic: topic.trim(),
-          subject,
-          level: level.toLowerCase(),
-          style: style.toLowerCase(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setNotes(data.notes);
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to generate notes');
-    } finally {
-      setLoading(false);
-    }
+  const generate = async () => {
+    if (loading) return;
+    if (topic.trim().length < 2) { setError({ title: 'Enter a topic', message: 'Write the topic you want notes for.' }); return; }
+    setLoading(true); setError(null); setNotes('');
+    const r = await aiPost<{ notes: string }>('/api/ai/notes', {
+      topic: topic.trim(), subject: subject || f.label, level: level.toLowerCase(), style: style.toLowerCase(),
+    });
+    setLoading(false);
+    if (!r.ok) { setError(r); return; }
+    setNotes(r.data.notes);
   };
 
-  const ChipRow = ({ label, options, selected, onSelect, color }: any) => (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-        {label}
-      </Text>
-      <ScrollView horizontal style={{ flexGrow: 0, flexShrink: 0 }} showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {options.map((opt: string) => (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => onSelect(opt)}
-              style={{
-                paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
-                backgroundColor: selected === opt ? (color ?? colors.accent) : colors.card,
-                borderWidth: 0.5,
-                borderColor: selected === opt ? (color ?? colors.accent) : colors.border,
-              }}
-            >
-              <Text style={{ color: selected === opt ? '#fff' : colors.textMuted, fontSize: 13, fontWeight: '500' }}>
-                {opt}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16, gap: 12 }}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text style={{ color: colors.text, fontSize: 18 }}>‹</Text>
-        </TouchableOpacity>
-        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>📝 Notes Generator</Text>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-
-        {/* Topic input */}
-        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-          TOPIC
-        </Text>
-        <TextInput
-          value={topic}
-          onChangeText={setTopic}
-          placeholder="e.g. Binary Trees, Fourier Series, TCP/IP..."
-          placeholderTextColor={colors.textDim}
-          style={{
-            backgroundColor: colors.card, borderRadius: 14, padding: 14,
-            color: colors.text, fontSize: 15, marginBottom: 20,
-          }}
-        />
-
-        <ChipRow label="Subject" options={SUBJECTS} selected={subject} onSelect={setSubject} color="#4F7CFF" />
-        <ChipRow label="Level" options={LEVELS} selected={level} onSelect={setLevel} color="#22C55E" />
-        <ChipRow label="Style" options={STYLES} selected={style} onSelect={setStyle} color="#F97316" />
-
-        {/* Generate button */}
-        <TouchableOpacity
-          onPress={generateNotes}
-          disabled={loading}
-          style={{
-            backgroundColor: loading ? colors.cardAlt : '#4F7CFF',
-            borderRadius: 16, padding: 16,
-            alignItems: 'center', marginTop: 8, marginBottom: 24,
-          }}
-        >
-          {loading ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Generating notes...</Text>
-            </View>
-          ) : (
-            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>✨ Generate Notes</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Notes output */}
+    <Page>
+      <Header title="Notes Generator" subtitle={`Made for ${f.label}`} />
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        <Label>Topic</Label>
+        <TextInput value={topic} onChangeText={setTopic} placeholder="A chapter or concept from your course" placeholderTextColor={colors.textDim} maxLength={150} style={inputBox(colors)} />
+        <Label>Subject (optional)</Label>
+        <Chips options={f.subjects} value={subject} onChange={setSubject} color="#4F7CFF" onAdd={f.addYours} />
+        <Label>Level</Label>
+        <Chips options={LEVELS} value={level} onChange={setLevel} color="#22C55E" sticky />
+        <Label>Style</Label>
+        <Chips options={STYLES} value={style} onChange={setStyle} color="#F97316" sticky />
+        <Button label="Generate notes" onPress={generate} busy={loading} color="#4F7CFF" />
+        <ErrorCard error={error} onRetry={error && topic.trim().length >= 2 ? generate : undefined} />
         {notes ? (
-          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>📄 {topic}</Text>
-              <View style={{ backgroundColor: '#4F7CFF22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                <Text style={{ color: '#4F7CFF', fontSize: 11, fontWeight: '600' }}>{subject}</Text>
-              </View>
-            </View>
-            <Text style={{ color: colors.textMuted, fontSize: 14, lineHeight: 22 }}>{notes}</Text>
+          <View style={{ marginTop: 20 }}>
+            <Card>
+              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 10 }}>{topic}</Text>
+              <Text selectable style={{ color: colors.textMuted, fontSize: 14, lineHeight: 22 }}>{notes}</Text>
+              <TouchableOpacity onPress={() => Share.share({ message: notes }).catch(() => {})} accessibilityRole="button" accessibilityLabel="Share notes" style={{ marginTop: 12, alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center' }}>
+                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>Share or copy</Text>
+              </TouchableOpacity>
+            </Card>
           </View>
         ) : null}
-
+        <Note />
       </ScrollView>
-    </SafeAreaView>
+    </Page>
   );
 }
+// END OF FILE

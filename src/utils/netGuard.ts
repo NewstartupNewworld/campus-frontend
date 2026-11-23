@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 //  - the app is told whether the server is fine, waking up, or not reachable (shown as a strip at the top)
 //  - when the login has ended (401), the student is signed out cleanly
 const API_HOST = 'campus-backend-arfy.onrender.com';
-const READ_TIMEOUT_MS = 20000;
+const READ_TIMEOUT_MS = 30000;
 const WRITE_TIMEOUT_MS = 50000;
 const RETRY_DELAYS_MS = [1500, 4000];
 const NO_LOGOUT_PATHS = ['/api/auth/', '/api/social/me']; // a wrong password also answers 401 there
@@ -46,6 +46,26 @@ const urlOf = (input: RequestInfo | URL): string => {
 };
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+// A failed request does not always mean "no internet": the free server may only be asleep.
+// So the phone asks a site that is always up before the app says "No connection".
+let lastProbe = { at: 0, ok: true };
+async function internetReachable(): Promise<boolean> {
+  if (Date.now() - lastProbe.at < 5000) return lastProbe.ok;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  let ok = false;
+  try {
+    await originalFetch('https://www.gstatic.com/generate_204', { method: 'HEAD', signal: controller.signal });
+    ok = true;
+  } catch {
+    ok = false;
+  } finally {
+    clearTimeout(timer);
+  }
+  lastProbe = { at: Date.now(), ok };
+  return ok;
+}
 
 async function guardedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = urlOf(input);
@@ -89,7 +109,7 @@ async function guardedFetch(input: RequestInfo | URL, init?: RequestInit): Promi
       if (i < attempts - 1) await sleep(RETRY_DELAYS_MS[i]);
     }
   }
-  setNet('offline');
+  setNet((await internetReachable()) ? 'waking' : 'offline');
   throw lastError;
 }
 
@@ -98,4 +118,6 @@ try {
 } catch {
   // If the phone does not allow it, the normal fetch keeps working
 }
+// Wake the free server as soon as the app opens, so the first screens do not wait for it
+originalFetch(`https://${API_HOST}/health`).catch(() => {});
 // END OF FILE
